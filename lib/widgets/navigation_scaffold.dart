@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controllers/navigation_controller.dart';
+import '../controllers/nav_controller.dart';
 import '../pages/settings/settings_page.dart';
 import '../pages/home/homepage.dart';
 
