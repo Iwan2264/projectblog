@@ -3,22 +3,14 @@ import 'package:get/get.dart';
 import '../controllers/nav_controller.dart';
 import '../pages/settings/settings_page.dart';
 import '../pages/home/homepage.dart';
-
-// Dummy blog page placeholder
-class BlogPage extends StatelessWidget {
-  const BlogPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('Blog page coming soon', style: Theme.of(context).textTheme.headlineSmall));
-  }
-}
+import '../pages/blog/blog_page.dart';
 
 class MainNavScaffold extends StatelessWidget {
   MainNavScaffold({super.key});
   final NavigationController navController = Get.put(NavigationController());
 
   final List<Widget> _screens = [
-    const BlogPage(),
+    const BlogHomePage(),
     const HomePage(),
     SettingsPage(),
   ];
