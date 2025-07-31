@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "97241370595",
+    "project_id": "projectblog-d5bbc",
+    "storage_bucket": "projectblog-d5bbc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:97241370595:android:218b8efb01d5b9ce169ad6",
+        "android_client_info": {
+          "package_name": "com.iwan.projectblog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtD3Pvfg2ahs7MzsfjLhv6-l2pTlAKgNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
