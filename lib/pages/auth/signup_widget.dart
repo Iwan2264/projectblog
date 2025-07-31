@@ -180,26 +180,6 @@ class _SignupWidgetState extends State<SignupWidget> {
             ),
             const SizedBox(height: 16),
             
-            // Google Sign Up button
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: OutlinedButton.icon(
-                onPressed: _authController.isLoading.value ? null : _authController.signInWithGoogle,
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                icon: const Icon(Icons.g_mobiledata, color: Colors.white, size: 24),
-                label: const Text(
-                  'Sign up with Google',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
             // Terms and privacy
             Text(
               'By creating an account, you agree to our\nTerms of Service and Privacy Policy',

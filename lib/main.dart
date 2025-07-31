@@ -6,13 +6,15 @@ import 'controllers/auth_controller.dart';
 import 'controllers/settings_controller.dart';
 import 'pages/auth/auth_page.dart';
 import 'pages/auth/email_verification.dart';
-import 'pages/home/homepage.dart';
+import 'widgets/navigation_scaffold.dart';
+import 'controllers/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   
   // Initialize controllers
+  Get.put(ThemeController());
   Get.put(AuthController());
   Get.put(SettingsController());
   
@@ -36,18 +38,18 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/auth',
       getPages: [
-        GetPage(name: '/auth', page: () => AuthPage()),
-        GetPage(name: '/verify-email', page: () => EmailVerificationPage()),
-        GetPage(name: '/home', page: () => HomePage()),
+        GetPage(name: '/auth', page: () => const AuthPage()),
+        GetPage(name: '/verify-email', page: () => const EmailVerificationPage()),
+        GetPage(name: '/home', page: () => MainNavScaffold()),
       ],
       home: Obx(() {
         if (_authController.firebaseUser.value == null) {
-          return AuthPage();
+          return const AuthPage();
         } else {
           if (!_authController.isEmailVerified()) {
-            return EmailVerificationPage();
+            return const EmailVerificationPage();
           } else {
-            return HomePage();
+            return MainNavScaffold();
           }
         }
       }),

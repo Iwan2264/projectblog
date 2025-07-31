@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/logger_util.dart';
+
 class ThemeController extends GetxController {
   final themeMode = ThemeMode.system.obs;
   SharedPreferences? _prefs;
@@ -48,7 +50,7 @@ class ThemeController extends GetxController {
       final prefs = _prefs ?? await SharedPreferences.getInstance();
       await prefs.setInt('themeMode', mode.index);
     } catch (e) {
-      debugPrint('Failed to save theme preference: $e');
+      AppLogger.warning('Failed to save theme preference (non-critical)', e);
     }
   }
 }

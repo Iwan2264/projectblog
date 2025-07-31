@@ -151,26 +151,6 @@ class _LoginWidgetState extends State<LoginWidget> {
                       ),
               )),
             ),
-            const SizedBox(height: 16),
-            
-            // Google Sign In button
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: OutlinedButton.icon(
-                onPressed: _authController.isLoading.value ? null : _authController.signInWithGoogle,
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                icon: const Icon(Icons.g_mobiledata, color: Colors.white, size: 24),
-                label: const Text(
-                  'Continue with Google',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ),
             const SizedBox(height: 20),
           ],
         ),

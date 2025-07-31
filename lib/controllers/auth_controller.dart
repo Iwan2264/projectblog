@@ -1,18 +1,18 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 import '../models/user_model.dart';
+import '../utils/logger_util.dart';
 
 class AuthController extends GetxController {
   static AuthController instance = Get.find();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late final GoogleSignIn _googleSignIn;
   
   Rx<User?> firebaseUser = Rx<User?>(null);
   Rx<UserModel?> userModel = Rx<UserModel?>(null);
@@ -23,31 +23,8 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _googleSignIn = GoogleSignIn.instance;
-    _initializeGoogleSignIn();
     firebaseUser.bindStream(_auth.authStateChanges());
     ever(firebaseUser, _setInitialScreen);
-  }
-  
-  Future<void> _initializeGoogleSignIn() async {
-    try {
-      await _googleSignIn.initialize();
-      _googleSignIn.authenticationEvents.listen(
-        _handleAuthenticationEvent,
-        onError: _handleAuthenticationError,
-      );
-    } catch (e) {
-      print('Error initializing Google Sign In: $e');
-    }
-  }
-  
-  void _handleAuthenticationEvent(GoogleSignInAuthenticationEvent event) {
-    // Handle Google Sign-In authentication events if needed
-    print('Google Sign-In authentication event: $event');
-  }
-  
-  void _handleAuthenticationError(Object error) {
-    print('Google Sign-In authentication error: $error');
   }
   
   _setInitialScreen(User? user) async {
@@ -61,9 +38,12 @@ class AuthController extends GetxController {
         // Only require email verification for email/password sign-in
         Get.offAllNamed('/verify-email');
       } else {
-        // User is logged in and verified (or using Google sign-in)
-        await getUserData();
+        // User is logged in and verified
+        // Load cached data first for faster UI, then update if needed
+        await loadCachedUserData();
         Get.offAllNamed('/home');
+        // Update user data in background (non-blocking)
+        getUserData();
       }
     }
   }
@@ -73,7 +53,7 @@ class AuthController extends GetxController {
     try {
       await _auth.currentUser?.reload();
     } catch (e) {
-      print('Error reloading user: $e');
+      AppLogger.error('Error reloading user', e);
     }
   }
   
@@ -89,22 +69,22 @@ class AuthController extends GetxController {
       User? user = _auth.currentUser;
       
       if (user != null) {
+        // Add timeout to prevent hanging
         DocumentSnapshot userDoc = await _firestore
             .collection('users')
             .doc(user.uid)
-            .get();
+            .get()
+            .timeout(const Duration(seconds: 10));
         
         if (userDoc.exists) {
           userModel.value = UserModel.fromMap(
               userDoc.data() as Map<String, dynamic>);
           
-          // Update last login time
-          await _firestore.collection('users').doc(user.uid).update({
-            'lastLoginAt': DateTime.now(),
-          });
-          
-          // Cache user data
-          await _cacheUserData(userModel.value!);
+          // Cache user data and update last login in parallel (non-blocking)
+          Future.wait([
+            _cacheUserData(userModel.value!),
+            _updateLastLoginAsync(user.uid), // Non-blocking background update
+          ]);
         } else {
           // If user document doesn't exist, create it
           String username = '';
@@ -125,21 +105,35 @@ class AuthController extends GetxController {
             lastLoginAt: DateTime.now(),
           );
           
-          // Save user to Firestore
+          // Save user to Firestore with timeout
           await _firestore
               .collection('users')
               .doc(user.uid)
-              .set(newUser.toMap());
+              .set(newUser.toMap())
+              .timeout(const Duration(seconds: 10));
           
           userModel.value = newUser;
-          await _cacheUserData(newUser);
+          // Cache in background
+          _cacheUserData(newUser);
         }
       }
     } catch (e) {
-      print('Error getting user data: $e');
+      AppLogger.error('Error getting user data', e);
       errorMessage.value = 'Failed to retrieve user data';
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // Update last login time asynchronously (non-blocking)
+  Future<void> _updateLastLoginAsync(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'lastLoginAt': DateTime.now(),
+      }).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      AppLogger.warning('Error updating last login (non-critical)', e);
+      // Don't show error to user as this is non-critical
     }
   }
   
@@ -148,20 +142,27 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      
+
+      // Add timeout to prevent hanging on sign in
       await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
-      );
-      
+      ).timeout(const Duration(seconds: 15));
+
       // Check if email is verified
       if (!(_auth.currentUser?.emailVerified ?? false)) {
         // Navigate to email verification page
         Get.offAllNamed('/verify-email');
         return;
       }
-      
-      await getUserData();
+
+      // Fetch user data and cache in parallel
+      await Future.wait([
+        getUserData(),
+        loadCachedUserData(),
+      ]);
+    } on TimeoutException {
+      errorMessage.value = 'Connection timeout. Please try again.';
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
@@ -176,73 +177,20 @@ class AuthController extends GetxController {
         case 'user-disabled':
           errorMessage.value = 'This user has been disabled.';
           break;
+        case 'network-request-failed':
+          errorMessage.value = 'Network error. Please check your connection.';
+          break;
+        case 'too-many-requests':
+          errorMessage.value = 'Too many attempts. Please try again later.';
+          break;
         default:
           errorMessage.value = 'Error during sign in: ${e.message}';
       }
     } catch (e) {
       errorMessage.value = 'An error occurred during sign in.';
-      print('Error during sign in: $e');
+      AppLogger.error('Error during sign in', e);
     } finally {
       isLoading.value = false;
-    }
-  }
-  
-  // Sign in with Google
-  Future<void> signInWithGoogle() async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      
-      // Check if the platform supports authenticate method
-      if (_googleSignIn.supportsAuthenticate()) {
-        // Use authenticate method for supported platforms
-        await _googleSignIn.authenticate();
-        
-        // Listen for authentication events to get the user
-        await for (final event in _googleSignIn.authenticationEvents) {
-          if (event is GoogleSignInAuthenticationEventSignIn) {
-            final GoogleSignInAccount googleUser = event.user;
-            await _signInToFirebaseWithGoogleUser(googleUser);
-            break;
-          } else if (event is GoogleSignInAuthenticationEventSignOut) {
-            // User cancelled or signed out
-            break;
-          }
-        }
-      } else {
-        errorMessage.value = 'Google Sign-In not supported on this platform';
-      }
-    } catch (e) {
-      if (e.toString().contains('canceled')) {
-        // User cancelled the sign-in flow
-        errorMessage.value = '';
-      } else {
-        errorMessage.value = 'An error occurred during Google sign in.';
-        print('Error during Google sign in: $e');
-      }
-    } finally {
-      isLoading.value = false;
-    }
-  }
-  
-  Future<void> _signInToFirebaseWithGoogleUser(GoogleSignInAccount googleUser) async {
-    try {
-      // Get authentication token (this should work without await in newer versions)
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      
-      // Create Firebase credential using idToken (which should be available)
-      final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
-      
-      // Sign in to Firebase with the Google credential
-      await _auth.signInWithCredential(credential);
-      
-      // Get user data (or create if first time)
-      await getUserData();
-    } catch (e) {
-      print('Error signing in to Firebase with Google user: $e');
-      throw e;
     }
   }
   
@@ -251,16 +199,13 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      
-      // Create user with email and password
+
+      // Create user with email and password - add timeout
       UserCredential userCred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
-      );
-      
-      // Send email verification
-      await userCred.user!.sendEmailVerification();
-      
+      ).timeout(const Duration(seconds: 15));
+
       // Create user model
       UserModel newUser = UserModel(
         uid: userCred.user!.uid,
@@ -269,18 +214,24 @@ class AuthController extends GetxController {
         createdAt: DateTime.now(),
         lastLoginAt: DateTime.now(),
       );
-      
-      // Save user to Firestore
-      await _firestore
-          .collection('users')
-          .doc(userCred.user!.uid)
-          .set(newUser.toMap());
-      
+
+      // Perform parallel operations to speed up the process
+      await Future.wait([
+        // Send email verification
+        userCred.user!.sendEmailVerification().timeout(const Duration(seconds: 10)),
+        // Save user to Firestore
+        _firestore
+            .collection('users')
+            .doc(userCred.user!.uid)
+            .set(newUser.toMap())
+            .timeout(const Duration(seconds: 10)),
+      ]);
+
       userModel.value = newUser;
-      
-      // Cache user data
-      await _cacheUserData(newUser);
-      
+
+      // Cache user data in background (non-blocking)
+      _cacheUserData(newUser);
+
       // Show verification message
       Get.snackbar(
         'Account Created',
@@ -289,10 +240,12 @@ class AuthController extends GetxController {
         backgroundColor: Colors.green.withOpacity(0.5),
         colorText: Colors.white,
       );
-      
+
       // Navigate to email verification page
       Get.offAllNamed('/verify-email');
-      
+
+    } on TimeoutException {
+      errorMessage.value = 'Connection timeout. Please try again.';
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'weak-password':
@@ -307,12 +260,18 @@ class AuthController extends GetxController {
         case 'operation-not-allowed':
           errorMessage.value = 'Email/password accounts are not enabled.';
           break;
+        case 'network-request-failed':
+          errorMessage.value = 'Network error. Please check your connection.';
+          break;
+        case 'too-many-requests':
+          errorMessage.value = 'Too many attempts. Please try again later.';
+          break;
         default:
           errorMessage.value = 'Error during sign up: ${e.message}';
       }
     } catch (e) {
       errorMessage.value = 'An error occurred during sign up.';
-      print('Error during sign up: $e');
+      AppLogger.error('Error during sign up', e);
     } finally {
       isLoading.value = false;
     }
@@ -324,9 +283,6 @@ class AuthController extends GetxController {
       // Sign out from Firebase
       await _auth.signOut();
       
-      // Disconnect from Google (if used) - this also signs out
-      await _googleSignIn.disconnect();
-      
       userModel.value = null;
       
       // Clear cached data
@@ -336,7 +292,7 @@ class AuthController extends GetxController {
       // Navigate back to auth page
       Get.offAllNamed('/auth');
     } catch (e) {
-      print('Error during sign out: $e');
+      AppLogger.error('Error during sign out', e);
     }
   }
   
@@ -351,6 +307,7 @@ class AuthController extends GetxController {
         'Password Reset', 
         'Password reset email sent to $email',
         snackPosition: SnackPosition.BOTTOM,
+        // ignore: deprecated_member_use
         backgroundColor: Colors.blue.withOpacity(0.5),
         colorText: Colors.white,
       );
@@ -385,29 +342,33 @@ class AuthController extends GetxController {
           'Verification Email Sent', 
           'Please check your inbox',
           snackPosition: SnackPosition.BOTTOM,
+          // ignore: deprecated_member_use
           backgroundColor: Colors.green.withOpacity(0.5),
           colorText: Colors.white,
         );
       }
     } catch (e) {
-      print('Error sending verification email: $e');
+      AppLogger.error('Error sending verification email', e);
       Get.snackbar(
         'Error', 
         'Failed to send verification email',
         snackPosition: SnackPosition.BOTTOM,
+        // ignore: deprecated_member_use
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
     }
   }
   
-  // Cache user data using SharedPreferences
+  // Cache user data using SharedPreferences (optimized with timeout)
   Future<void> _cacheUserData(UserModel user) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
       await prefs.setString('user_data', jsonEncode(user.toMap()));
     } catch (e) {
-      print('Error caching user data: $e');
+      AppLogger.warning('Error caching user data (non-critical)', e);
+      // Don't throw error as this is non-critical for authentication flow
     }
   }
   
@@ -421,17 +382,16 @@ class AuthController extends GetxController {
         userModel.value = UserModel.fromMap(jsonDecode(userData));
       }
     } catch (e) {
-      print('Error loading cached user data: $e');
+      AppLogger.warning('Error loading cached user data (non-critical)', e);
     }
   }
   
-  // Get authentication method (email/password or Google)
+  // Get authentication method (email/password)
   String getAuthProvider() {
     User? user = _auth.currentUser;
     if (user == null) return 'none';
     
     List<String> providers = user.providerData.map((e) => e.providerId).toList();
-    if (providers.contains('google.com')) return 'google';
     if (providers.contains('password')) return 'email';
     
     return 'unknown';
