@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: MainNavScaffold(), // Use your new navigation scaffold here
+      home: MainNavScaffold(),
     );
   }
 }
