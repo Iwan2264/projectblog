@@ -27,7 +27,7 @@ class _LoginWidgetState extends State<LoginWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
         key: _formKey,
@@ -59,7 +59,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                 color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
             
             // Email field
             _buildTextField(
@@ -106,7 +106,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             
             // Error message
             Obx(() => _authController.errorMessage.value.isNotEmpty
@@ -151,7 +151,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                       ),
               )),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             
             // Google Sign In button
             SizedBox(
@@ -171,6 +171,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                 ),
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

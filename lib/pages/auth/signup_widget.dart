@@ -32,7 +32,7 @@ class _SignupWidgetState extends State<SignupWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
         key: _formKey,
@@ -64,7 +64,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             
             // Username field
             _buildTextField(
@@ -77,7 +77,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             
             // Email field
             _buildTextField(
@@ -91,7 +91,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             
             // Password field
             _buildTextField(
@@ -112,7 +112,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             
             // Confirm password field
             _buildTextField(
@@ -133,7 +133,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 return null;
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             
             // Error message
             Obx(() => _authController.errorMessage.value.isNotEmpty
@@ -178,7 +178,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                       ),
               )),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             
             // Google Sign Up button
             SizedBox(
@@ -198,7 +198,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             
             // Terms and privacy
             Text(
@@ -210,6 +210,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 height: 1.4,
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

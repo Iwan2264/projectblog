@@ -20,9 +20,7 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
-    // Clear any previous error messages when this page is loaded
-    _authController.errorMessage.value = '';
+        _authController.errorMessage.value = '';
   }
 
   @override
@@ -66,24 +64,27 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
                   child: Column(
                     children: [
                       // Add an icon or logo here if you have one
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
+                        // App logo icon inside a styled circular container
+                        /*
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: Colors.white.withOpacity(0.1), // Subtle background
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.3),
+                            color: Colors.white.withOpacity(0.3), // Soft border
                             width: 2,
                           ),
-                        ),
-                        child: const Icon(
+                          ),
+                          child: const Icon(
                           Icons.article_outlined,
                           size: 40,
-                          color: Colors.white,
+                          color: Colors.white, // Icon color
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
+                        */
                       
                       Text(
                         'Project Blog',
@@ -116,7 +117,7 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
                   ),
                 ),
                 
-                const SizedBox(height: 30),
+                const SizedBox(height: 10),
                 
                 // Enhanced Tab bar
                 Container(
