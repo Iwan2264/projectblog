@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models/user_model.dart';
 import '../models/blog_model.dart';
-import '../models/like_model.dart';
 import '../utils/logger_util.dart';
 
 class DatabaseService {
@@ -262,14 +261,6 @@ class DatabaseService {
         
         AppLogger.info('Blog unliked: $blogId by $userId');
       } else {
-        // Like the blog
-        LikeModel like = LikeModel(
-          id: '',
-          userId: userId,
-          blogId: blogId,
-          blogAuthorId: blogAuthorId,
-          createdAt: DateTime.now(),
-        );
         
         await _firestore.collection('likes').add(like.toMap());
         
