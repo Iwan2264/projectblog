@@ -41,33 +41,29 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCG7-My9GRJvWs0eIfqxnbAqsTbudr3jJo',
-    appId: '1:97241370595:web:7446a771b228fbf8169ad6',
-    messagingSenderId: '97241370595',
-    projectId: 'projectblog-d5bbc',
-    authDomain: 'projectblog-d5bbc.firebaseapp.com',
-    databaseURL: 'https://projectblog-d5bbc-default-rtdb.firebaseio.com',
-    storageBucket: 'projectblog-d5bbc.firebasestorage.app',
-    measurementId: 'G-1NMZY45ERM',
+    apiKey: 'AIzaSyASXpNACpP6u0m3UVbGX9qBZzie0wbmJkk',
+    appId: '1:143218892601:web:99f5a501b1e90d040b12e8',
+    messagingSenderId: '143218892601',
+    projectId: 'projectblog001',
+    authDomain: 'projectblog001.firebaseapp.com',
+    storageBucket: 'projectblog001.firebasestorage.app',
+    measurementId: 'G-TS7Q7N15CR',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDtD3Pvfg2ahs7MzsfjLhv6-l2pTlAKgNI',
-    appId: '1:97241370595:android:218b8efb01d5b9ce169ad6',
-    messagingSenderId: '97241370595',
-    projectId: 'projectblog-d5bbc',
-    databaseURL: 'https://projectblog-d5bbc-default-rtdb.firebaseio.com',
-    storageBucket: 'projectblog-d5bbc.firebasestorage.app',
+    apiKey: 'AIzaSyD79Oppto8M1QhxmSEitcgPclICcVDjdMY',
+    appId: '1:143218892601:android:64a17b81f18c0dc90b12e8',
+    messagingSenderId: '143218892601',
+    projectId: 'projectblog001',
+    storageBucket: 'projectblog001.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBp1bLHC__kAQjHtLePbRmSViBzt6QNgjg',
-    appId: '1:97241370595:ios:9867908cff753224169ad6',
-    messagingSenderId: '97241370595',
-    projectId: 'projectblog-d5bbc',
-    databaseURL: 'https://projectblog-d5bbc-default-rtdb.firebaseio.com',
-    storageBucket: 'projectblog-d5bbc.firebasestorage.app',
-    androidClientId: '97241370595-6tlp6no3f0mv0aomo6gch60m66dntgvi.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDLO9r3NF3UCcisAI5VKi0Aqgzh6Vz0pFs',
+    appId: '1:143218892601:ios:07c08f887f0ece590b12e8',
+    messagingSenderId: '143218892601',
+    projectId: 'projectblog001',
+    storageBucket: 'projectblog001.firebasestorage.app',
     iosBundleId: 'com.example.projectblog',
   );
 

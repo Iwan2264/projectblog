@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 class Dashboard extends StatelessWidget {
   final int totalBlogs;
   final int totalLikes;
@@ -20,9 +19,9 @@ class Dashboard extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 2.5,
+      crossAxisSpacing: 6,
+      mainAxisSpacing: 6,
+      childAspectRatio: 3,
       children: [
         DashboardCard(title: "Total Blogs", value: totalBlogs.toString(), icon: Icons.article),
         DashboardCard(title: "Total Views", value: totalViews.toString(), icon: Icons.visibility),
@@ -32,7 +31,6 @@ class Dashboard extends StatelessWidget {
     );
   }
 }
-
 class DashboardCard extends StatelessWidget {
   final String title;
   final String value;
@@ -47,30 +45,39 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
-          )
-        ],
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // Vertically center
+        mainAxisAlignment: MainAxisAlignment.start, // Left align horizontally
         children: [
-          Icon(icon, size: 32, color: Colors.deepPurple),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
+          Icon(icon, size: 32, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center, // Vertically center
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

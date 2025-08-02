@@ -23,8 +23,21 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Set persistence to LOCAL (keep user logged in until explicit sign out)
+    _setPersistence();
     firebaseUser.bindStream(_auth.authStateChanges());
     ever(firebaseUser, _setInitialScreen);
+  }
+  
+  // Set Firebase Auth persistence to LOCAL
+  Future<void> _setPersistence() async {
+    try {
+      // This is important to prevent automatic logout
+      await _auth.setPersistence(Persistence.LOCAL);
+    } catch (e) {
+      AppLogger.warning('Error setting auth persistence (non-critical): $e');
+      // Don't throw error as this is non-critical for authentication flow
+    }
   }
   
   _setInitialScreen(User? user) async {
@@ -32,18 +45,35 @@ class AuthController extends GetxController {
       // User is not logged in
       Get.offAllNamed('/auth');
     } else {
-      // Check if email is verified when required
-      if (user.providerData.any((element) => element.providerId == 'password') && 
-          !user.emailVerified) {
-        // Only require email verification for email/password sign-in
-        Get.offAllNamed('/verify-email');
-      } else {
-        // User is logged in and verified
-        // Load cached data first for faster UI, then update if needed
-        await loadCachedUserData();
-        Get.offAllNamed('/home');
-        // Update user data in background (non-blocking)
-        getUserData();
+      try {
+        // Force token refresh if it's getting close to expiration
+        // This helps prevent automatic logouts due to token expiration
+        await user.getIdToken(true);
+        
+        // Check if email is verified when required
+        if (user.providerData.any((element) => element.providerId == 'password') && 
+            !user.emailVerified) {
+          // Only require email verification for email/password sign-in
+          Get.offAllNamed('/verify-email');
+        } else {
+          // User is logged in and verified
+          // Load cached data first for faster UI, then update if needed
+          await loadCachedUserData();
+          Get.offAllNamed('/home');
+          // Update user data in background (non-blocking)
+          getUserData();
+        }
+      } catch (e) {
+        AppLogger.error('Error refreshing auth token', e);
+        // If token refresh fails, try to continue with the flow
+        if (user.providerData.any((element) => element.providerId == 'password') && 
+            !user.emailVerified) {
+          Get.offAllNamed('/verify-email');
+        } else {
+          await loadCachedUserData();
+          Get.offAllNamed('/home');
+          getUserData();
+        }
       }
     }
   }
@@ -130,10 +160,11 @@ class AuthController extends GetxController {
     try {
       await _firestore.collection('users').doc(uid).update({
         'lastLoginAt': DateTime.now(),
-      }).timeout(const Duration(seconds: 5));
+      }).timeout(const Duration(seconds: 15));
+    } on TimeoutException catch (e) {
+      AppLogger.warning('Timeout updating last login (non-critical): $e');
     } catch (e) {
-      AppLogger.warning('Error updating last login (non-critical)', e);
-      // Don't show error to user as this is non-critical
+      AppLogger.warning('Error updating last login (non-critical): $e');
     }
   }
   

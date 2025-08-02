@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-enum BlogStatus { published, scheduled, draft }
+import 'package:projectblog/pages/home/widgets/published.dart';
+import 'package:projectblog/pages/home/widgets/scheduled.dart';
+import 'package:projectblog/pages/home/widgets/draft.dart';
 
+// Your main BlogSection widget now correctly references the imported files.
 class BlogSection extends StatefulWidget {
   const BlogSection({super.key});
   @override
@@ -10,11 +13,9 @@ class BlogSection extends StatefulWidget {
 class _BlogSectionState extends State<BlogSection> {
   BlogStatus _selectedStatus = BlogStatus.published;
 
-  // Example dummy data, replace with your actual controller logic
-  // final List<BlogModel> _allBlogs = [];
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         Row(
@@ -41,49 +42,32 @@ class _BlogSectionState extends State<BlogSection> {
             ),
             InkWell(
               onTap: () {},
-              child: const Row(
+              child: Row(
                 children: [
-                  Text("Create New", style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)),
-                  Icon(Icons.edit, color: Colors.deepPurple, size: 18),
+                  Text(
+                    "Create New",
+                    style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.edit, color: theme.colorScheme.primary, size: 18),
                 ],
               ),
             )
           ],
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 300,
-          child: IndexedStack(
+        IndexedStack(
             index: _selectedStatus.index,
-            children: [
-              _buildBlogGrid("Published Blog"),
-              _buildBlogGrid("Scheduled Blog"),
-              _buildBlogGrid("Draft Blog"),
+            children: const [
+              PublishedBlogsGrid(),
+              ScheduledBlogsGrid(),
+              DraftsGrid(),
             ],
           ),
-        ),
       ],
     );
   }
-
-  Widget _buildBlogGrid(String type) {
-    return GridView.builder(
-      itemCount: 4, // Replace with your list's length
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
-      ),
-      itemBuilder: (context, index) {
-        return Card(
-          child: Center(child: Text("$type ${index + 1}")),
-        );
-      },
-    );
-  }
 }
-
 class TabButton extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -98,6 +82,7 @@ class TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -105,7 +90,7 @@ class TabButton extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isSelected ? Colors.deepPurple : Colors.transparent,
+              color: isSelected ? theme.colorScheme.primary : Colors.transparent,
               width: 2.0,
             ),
           ),
@@ -113,7 +98,7 @@ class TabButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.deepPurple : Colors.grey.shade600,
+            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.7),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -121,3 +106,5 @@ class TabButton extends StatelessWidget {
     );
   }
 }
+
+enum BlogStatus { published, scheduled, draft }
