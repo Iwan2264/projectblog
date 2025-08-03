@@ -17,9 +17,6 @@ class CategoriesSection extends StatelessWidget {
     {'title': 'Science', 'image': 'assets/thumbnail/science.png'},
     {'title': 'Personal Growth', 'image': 'assets/thumbnail/growth.png'},
     {'title': 'Sports & Gaming', 'image': 'assets/thumbnail/sports.png'},
-    //If more categories are needed, they can be added here and a load more button can be implemented
-    // to fetch more categories and show them in the UI and display them in 8 grid instead of 12 now
-    // with a load more button to fetch more categories.
   ];
 
   @override
@@ -30,24 +27,24 @@ class CategoriesSection extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.only(left: 6, right: 6, top: 6, bottom: 0),
         child: Material(
-          elevation: 3,
-          borderRadius: BorderRadius.circular(12),
+          elevation: 2,
+          borderRadius: BorderRadius.circular(6),
           color: color.surface,
           child: Container(
             decoration: BoxDecoration(
               color: color.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
                   color: color.shadow.withAlpha((0.08 * 255).toInt()),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
+                  blurRadius: 2,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.only(top: 6, left: 6, right: 6, bottom: 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -58,7 +55,7 @@ class CategoriesSection extends StatelessWidget {
                     color: color.onSurface,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -87,11 +84,11 @@ class CategoriesSection extends StatelessWidget {
                             child: Image.asset(
                               category['image']!,
                               height: 80,
-                              width: 120,
+                              width: 80,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
                                 height: 80,
-                                width: 120,
+                                width: 80,
                                 color: color.surfaceContainerHighest,
                                 child: Icon(Icons.broken_image, color: color.onSurfaceVariant),
                               ),
