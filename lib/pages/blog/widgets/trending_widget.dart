@@ -8,25 +8,53 @@ class TrendingBlogsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Trending Blogs',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    final color = Theme.of(context).colorScheme;
+    final textStyle = Theme.of(context).textTheme;
+      
+      return SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: Material(
+            elevation: 3,
+            borderRadius: BorderRadius.circular(12),
+            color: color.surface,
+            child: Container(
+              decoration: BoxDecoration(
+                color: color.surface,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.shadow.withAlpha((0.08 * 255).toInt()),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(6.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Trending Blogs',
+                    style: textStyle.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: color.onSurface,
+                      ),
+                  ),
+                  const SizedBox(height: 6),
+                  ListView.builder(
+                    itemCount: blogs.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return BlogCard(blog: blogs[index]);
+                    },
+                )
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          ListView.builder(
-            itemCount: blogs.length,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemBuilder: (context, index) {
-              return BlogCard(blog: blogs[index]);
-            },
-          )
-        ],
+        ),
       ),
     );
   }

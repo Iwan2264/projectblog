@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import '../controllers/nav_controller.dart';
 import '../pages/settings/settings_page.dart';
 import '../pages/home/homepage.dart';
-import '../pages/blog/blog_page.dart';
+import '../pages/blog/blog_homepage.dart';
 
 class MainNavScaffold extends StatelessWidget {
   MainNavScaffold({super.key});

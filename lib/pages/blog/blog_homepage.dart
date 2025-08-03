@@ -29,25 +29,36 @@ class BlogHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Discover Blogs'),
-        backgroundColor: Colors.white,
+        title: Text(
+          'Discover Blogs',
+          style: theme.textTheme.titleLarge,
+        ),
+        backgroundColor: theme.colorScheme.surface,
         elevation: 0,
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
+          IconButton(
+            onPressed: () {},
+            icon: Icon(Icons.search, color: theme.colorScheme.primary),
+          ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const CategoriesSection(),
-            const SizedBox(height: 16),
-            TrendingBlogsSection(blogs: dummyBlogs),
-          ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CategoriesSection(),
+              //const SizedBox(height: 10),
+              TrendingBlogsSection(blogs: dummyBlogs),
+            ],
+          ),
         ),
       ),
+      backgroundColor: theme.colorScheme.surface,
     );
   }
 }

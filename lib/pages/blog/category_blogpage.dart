@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:projectblog/models/blog_model.dart';
-import 'package:projectblog/pages/blog/blog_page.dart';
+import 'package:projectblog/pages/blog/blog_homepage.dart';
 import 'package:projectblog/pages/blog/widgets/blogcard_widget.dart';
 
 class CategoryBlogsPage extends StatelessWidget {
@@ -25,7 +25,7 @@ class CategoryBlogsPage extends StatelessWidget {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(6),
               itemCount: filteredBlogs.length,
               itemBuilder: (context, index) {
                 return BlogCard(blog: filteredBlogs[index]);

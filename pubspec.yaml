@@ -4,7 +4,7 @@ description: A new Flutter blog project.
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0' # Please adjust this to match your Flutter SDK version if needed
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -45,3 +45,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/thumbnail/
