@@ -14,7 +14,7 @@ class TrendingBlogsSection extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.only(left: 6, right: 6, top: 0, bottom: 2),
+        padding: const EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 3),
         child: Material(
           elevation: 2,
           borderRadius: BorderRadius.circular(6),
@@ -32,7 +32,7 @@ class TrendingBlogsSection extends StatelessWidget {
                 ),
               ],
             ),
-            padding: const EdgeInsets.only(left: 6, right: 6, top: 0, bottom: 2),
+            padding: const EdgeInsets.only(left: 6, right: 6, top: 2, bottom: 3),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -43,7 +43,7 @@ class TrendingBlogsSection extends StatelessWidget {
                       color: color.onSurface,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height:2),
                 ListView.builder(
                   itemCount: blogs.length,
                   shrinkWrap: true,

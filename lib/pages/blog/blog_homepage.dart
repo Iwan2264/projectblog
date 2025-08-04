@@ -52,7 +52,7 @@ class BlogHomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const CategoriesSection(),
-              SizedBox(height: 2), // minimal spacing
+              SizedBox(height: 10),
               TrendingBlogsSection(blogs: dummyBlogs),
             ],
           ),
