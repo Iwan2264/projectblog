@@ -23,49 +23,35 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Set persistence to LOCAL (keep user logged in until explicit sign out)
     _setPersistence();
     firebaseUser.bindStream(_auth.authStateChanges());
     ever(firebaseUser, _setInitialScreen);
   }
   
-  // Set Firebase Auth persistence to LOCAL
   Future<void> _setPersistence() async {
     try {
-      // This is important to prevent automatic logout
       await _auth.setPersistence(Persistence.LOCAL);
     } catch (e) {
       AppLogger.warning('Error setting auth persistence (non-critical): $e');
-      // Don't throw error as this is non-critical for authentication flow
     }
   }
   
   _setInitialScreen(User? user) async {
     if (user == null) {
-      // User is not logged in
       Get.offAllNamed('/auth');
     } else {
       try {
-        // Force token refresh if it's getting close to expiration
-        // This helps prevent automatic logouts due to token expiration
         await user.getIdToken(true);
-        
-        // Check if email is verified when required
         if (user.providerData.any((element) => element.providerId == 'password') && 
             !user.emailVerified) {
-          // Only require email verification for email/password sign-in
           Get.offAllNamed('/verify-email');
         } else {
-          // User is logged in and verified
-          // Load cached data first for faster UI, then update if needed
           await loadCachedUserData();
           Get.offAllNamed('/home');
-          // Update user data in background (non-blocking)
           getUserData();
         }
       } catch (e) {
         AppLogger.error('Error refreshing auth token', e);
-        // If token refresh fails, try to continue with the flow
         if (user.providerData.any((element) => element.providerId == 'password') && 
             !user.emailVerified) {
           Get.offAllNamed('/verify-email');
@@ -78,7 +64,6 @@ class AuthController extends GetxController {
     }
   }
   
-  // Reload the current user
   Future<void> reloadUser() async {
     try {
       await _auth.currentUser?.reload();
@@ -87,19 +72,16 @@ class AuthController extends GetxController {
     }
   }
   
-  // Get current user's email
   String getCurrentUserEmail() {
     return _auth.currentUser?.email ?? 'your email address';
   }
   
-  // Get user data from Firestore or create if it doesn't exist
   Future<void> getUserData() async {
     try {
       isLoading.value = true;
       User? user = _auth.currentUser;
       
       if (user != null) {
-        // Add timeout to prevent hanging
         DocumentSnapshot userDoc = await _firestore
             .collection('users')
             .doc(user.uid)
@@ -109,41 +91,32 @@ class AuthController extends GetxController {
         if (userDoc.exists) {
           userModel.value = UserModel.fromMap(
               userDoc.data() as Map<String, dynamic>);
-          
-          // Cache user data and update last login in parallel (non-blocking)
           Future.wait([
             _cacheUserData(userModel.value!),
-            _updateLastLoginAsync(user.uid), // Non-blocking background update
+            _updateLastLoginAsync(user.uid),
           ]);
         } else {
-          // If user document doesn't exist, create it
           String username = '';
-          
-          // Try to get username from display name or email
           if (user.displayName != null && user.displayName!.isNotEmpty) {
             username = user.displayName!;
           } else if (user.email != null) {
-            username = user.email!.split('@')[0]; // Use part before @ as username
+            username = user.email!.split('@')[0];
           }
-          
           UserModel newUser = UserModel(
             uid: user.uid,
             email: user.email ?? '',
             username: username,
+            name: '', // empty by default
             photoURL: user.photoURL,
             createdAt: DateTime.now(),
             lastLoginAt: DateTime.now(),
           );
-          
-          // Save user to Firestore with timeout
           await _firestore
               .collection('users')
               .doc(user.uid)
               .set(newUser.toMap())
               .timeout(const Duration(seconds: 10));
-          
           userModel.value = newUser;
-          // Cache in background
           _cacheUserData(newUser);
         }
       }
@@ -155,7 +128,6 @@ class AuthController extends GetxController {
     }
   }
 
-  // Update last login time asynchronously (non-blocking)
   Future<void> _updateLastLoginAsync(String uid) async {
     try {
       await _firestore.collection('users').doc(uid).update({
@@ -168,26 +140,18 @@ class AuthController extends GetxController {
     }
   }
   
-  // Sign in with email and password
   Future<void> signIn(String email, String password) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-
-      // Add timeout to prevent hanging on sign in
       await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       ).timeout(const Duration(seconds: 15));
-
-      // Check if email is verified
       if (!(_auth.currentUser?.emailVerified ?? false)) {
-        // Navigate to email verification page
         Get.offAllNamed('/verify-email');
         return;
       }
-
-      // Fetch user data and cache in parallel
       await Future.wait([
         getUserData(),
         loadCachedUserData(),
@@ -225,13 +189,34 @@ class AuthController extends GetxController {
     }
   }
   
-  // Sign up with email and password
-  Future<void> signUp(String email, String password, String username) async {
+  // Check if username is taken (UNIQUE usernames)
+  Future<bool> isUsernameTaken(String username) async {
+    try {
+      final query = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .get();
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      AppLogger.warning('Error checking username uniqueness', e);
+      return true; // Assume taken if error
+    }
+  }
+  
+  // UPDATED: Sign up with name, email, password, and unique username
+  Future<void> signUp(String email, String password, String username, String name) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
-      // Create user with email and password - add timeout
+      // Check if username is taken
+      bool usernameExists = await isUsernameTaken(username);
+      if (usernameExists) {
+        errorMessage.value = 'Username already taken';
+        return;
+      }
+
+      // Create user with email and password
       UserCredential userCred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -242,15 +227,13 @@ class AuthController extends GetxController {
         uid: userCred.user!.uid,
         email: email,
         username: username,
+        name: name,
         createdAt: DateTime.now(),
         lastLoginAt: DateTime.now(),
       );
 
-      // Perform parallel operations to speed up the process
       await Future.wait([
-        // Send email verification
         userCred.user!.sendEmailVerification().timeout(const Duration(seconds: 10)),
-        // Save user to Firestore
         _firestore
             .collection('users')
             .doc(userCred.user!.uid)
@@ -259,11 +242,8 @@ class AuthController extends GetxController {
       ]);
 
       userModel.value = newUser;
-
-      // Cache user data in background (non-blocking)
       _cacheUserData(newUser);
 
-      // Show verification message
       Get.snackbar(
         'Account Created',
         'Please check your email to verify your account',
@@ -272,7 +252,6 @@ class AuthController extends GetxController {
         colorText: Colors.white,
       );
 
-      // Navigate to email verification page
       Get.offAllNamed('/verify-email');
 
     } on TimeoutException {
@@ -308,37 +287,27 @@ class AuthController extends GetxController {
     }
   }
   
-  // Sign out
   Future<void> signOut() async {
     try {
-      // Sign out from Firebase
       await _auth.signOut();
-      
       userModel.value = null;
-      
-      // Clear cached data
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('user_data');
-      
-      // Navigate back to auth page
       Get.offAllNamed('/auth');
     } catch (e) {
       AppLogger.error('Error during sign out', e);
     }
   }
   
-  // Reset password
   Future<void> resetPassword(String email) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      
       await _auth.sendPasswordResetEmail(email: email);
       Get.snackbar(
         'Password Reset', 
         'Password reset email sent to $email',
         snackPosition: SnackPosition.BOTTOM,
-        // ignore: deprecated_member_use
         backgroundColor: Colors.blue.withOpacity(0.5),
         colorText: Colors.white,
       );
@@ -358,12 +327,10 @@ class AuthController extends GetxController {
     }
   }
   
-  // Check if user's email is verified
   bool isEmailVerified() {
     return _auth.currentUser?.emailVerified ?? false;
   }
   
-  // Resend verification email
   Future<void> resendVerificationEmail() async {
     try {
       User? user = _auth.currentUser;
@@ -373,7 +340,6 @@ class AuthController extends GetxController {
           'Verification Email Sent', 
           'Please check your inbox',
           snackPosition: SnackPosition.BOTTOM,
-          // ignore: deprecated_member_use
           backgroundColor: Colors.green.withOpacity(0.5),
           colorText: Colors.white,
         );
@@ -384,14 +350,12 @@ class AuthController extends GetxController {
         'Error', 
         'Failed to send verification email',
         snackPosition: SnackPosition.BOTTOM,
-        // ignore: deprecated_member_use
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
     }
   }
   
-  // Cache user data using SharedPreferences (optimized with timeout)
   Future<void> _cacheUserData(UserModel user) async {
     try {
       final prefs = await SharedPreferences.getInstance()
@@ -399,16 +363,13 @@ class AuthController extends GetxController {
       await prefs.setString('user_data', jsonEncode(user.toMap()));
     } catch (e) {
       AppLogger.warning('Error caching user data (non-critical)', e);
-      // Don't throw error as this is non-critical for authentication flow
     }
   }
   
-  // Load cached user data
   Future<void> loadCachedUserData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userData = prefs.getString('user_data');
-      
       if (userData != null) {
         userModel.value = UserModel.fromMap(jsonDecode(userData));
       }
@@ -417,14 +378,11 @@ class AuthController extends GetxController {
     }
   }
   
-  // Get authentication method (email/password)
   String getAuthProvider() {
     User? user = _auth.currentUser;
     if (user == null) return 'none';
-    
     List<String> providers = user.providerData.map((e) => e.providerId).toList();
     if (providers.contains('password')) return 'email';
-    
     return 'unknown';
   }
 }

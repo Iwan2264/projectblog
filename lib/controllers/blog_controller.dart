@@ -4,14 +4,20 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models/blog_model.dart';
 import '../models/user_model.dart';
-import '../services/database_service.dart';
+import '../services/analytics_service.dart';
+import '../services/blog_service.dart';
+import '../services/like_service.dart';
+import '../services/user_service.dart';
 import '../controllers/auth_controller.dart';
 import '../utils/logger_util.dart';
 
 class BlogController extends GetxController {
   static BlogController instance = Get.find();
   
-  final DatabaseService _databaseService = DatabaseService();
+  final BlogService _blogService = BlogService();
+  final LikeService _likeService = LikeService();
+  final UserService _userService = UserService();
+  final AnalyticsService _analyticsService = AnalyticsService();
   final AuthController _authController = Get.find<AuthController>();
   
   // Observable variables
@@ -88,16 +94,26 @@ class BlogController extends GetxController {
       );
 
       // Create blog in database
-      String blogId = await _databaseService.createBlog(blog);
+      String blogId = await _blogService.createBlog(blog);
 
       // Upload image if selected
       if (blogImage.value != null) {
-        imageURL = await _databaseService.uploadBlogImage(blogId, blogImage.value!);
-        await _databaseService.updateBlog(blogId, {'imageURL': imageURL});
+        imageURL = await _blogService.uploadBlogImage(blogId, blogImage.value!);
+        await _blogService.updateBlog(blogId, {'imageURL': imageURL});
       }
 
       // Clear form
       _clearBlogForm();
+
+      // Update user profile stats
+      try {
+        await _userService.updateUser(currentUser.uid, {
+          'lastPostAt': DateTime.now(),
+        });
+      } catch (e) {
+        // Non-critical update, just log the error
+        AppLogger.warning('Error updating user last post time (non-critical)', e);
+      }
 
       Get.snackbar(
         'Success',
@@ -208,7 +224,7 @@ class BlogController extends GetxController {
   Future<void> loadRecentBlogs() async {
     try {
       isLoading.value = true;
-      List<BlogModel> blogs = await _databaseService.getRecentBlogs(limit: 20);
+      List<BlogModel> blogs = await _blogService.getRecentBlogs(limit: 20);
       recentBlogs.assignAll(blogs);
     } catch (e) {
       AppLogger.error('Error loading recent blogs', e);
@@ -222,7 +238,7 @@ class BlogController extends GetxController {
   Future<void> loadUserBlogs(String userId) async {
     try {
       isLoading.value = true;
-      List<BlogModel> blogs = await _databaseService.getBlogsByAuthor(userId, limit: 20);
+      List<BlogModel> blogs = await _blogService.getBlogsByAuthor(userId, limit: 20);
       userBlogs.assignAll(blogs);
     } catch (e) {
       AppLogger.error('Error loading user blogs', e);
@@ -236,7 +252,7 @@ class BlogController extends GetxController {
   Future<void> loadLikedBlogs(String userId) async {
     try {
       isLoading.value = true;
-      List<BlogModel> blogs = await _databaseService.getLikedBlogsByUser(userId, limit: 20);
+      List<BlogModel> blogs = await _likeService.getLikedBlogsByUser(userId, limit: 20);
       likedBlogs.assignAll(blogs);
     } catch (e) {
       AppLogger.error('Error loading liked blogs', e);
@@ -249,7 +265,7 @@ class BlogController extends GetxController {
   /// Search blogs
   Future<List<BlogModel>> searchBlogs(String searchTerm) async {
     try {
-      return await _databaseService.searchBlogs(searchTerm, limit: 20);
+      return await _blogService.searchBlogs(searchTerm, limit: 20);
     } catch (e) {
       AppLogger.error('Error searching blogs', e);
       return [];
@@ -273,7 +289,7 @@ class BlogController extends GetxController {
         return;
       }
 
-      await _databaseService.likeBlog(
+      await _likeService.likeBlog(
         currentUser.uid,
         blog.id,
         blog.authorId,
@@ -300,7 +316,7 @@ class BlogController extends GetxController {
       UserModel? currentUser = _authController.userModel.value;
       if (currentUser == null) return false;
 
-      return await _databaseService.hasUserLikedBlog(currentUser.uid, blogId);
+      return await _likeService.hasUserLikedBlog(currentUser.uid, blogId);
     } catch (e) {
       AppLogger.error('Error checking if user liked blog', e);
       return false;
@@ -310,7 +326,7 @@ class BlogController extends GetxController {
   /// Increment blog views
   Future<void> viewBlog(String blogId) async {
     try {
-      await _databaseService.incrementBlogViews(blogId);
+      await _blogService.incrementBlogViews(blogId);
     } catch (e) {
       AppLogger.warning('Error incrementing blog views (non-critical)', e);
     }
@@ -353,7 +369,7 @@ class BlogController extends GetxController {
       if (!confirm) return;
 
       isLoading.value = true;
-      await _databaseService.deleteBlog(blog.id, blog.authorId);
+      await _blogService.deleteBlog(blog.id, blog.authorId);
 
       // Remove from local lists
       recentBlogs.removeWhere((b) => b.id == blog.id);
@@ -400,5 +416,79 @@ class BlogController extends GetxController {
   bool isCurrentUserAuthor(BlogModel blog) {
     UserModel? currentUser = _authController.userModel.value;
     return currentUser != null && currentUser.uid == blog.authorId;
+  }
+
+  /// Get user analytics data
+  Future<Map<String, int>> getUserAnalytics(String userId) async {
+    try {
+      return await _analyticsService.getUserStats(userId);
+    } catch (e) {
+      AppLogger.error('Error fetching user analytics', e);
+      return {};
+    }
+  }
+  
+  /// Get complete user profile with their blogs
+  Future<Map<String, dynamic>> getUserProfile(String userId) async {
+    try {
+      // Get user data and blogs in parallel
+      final results = await Future.wait([
+        _userService.getUser(userId),
+        _blogService.getBlogsByAuthor(userId, limit: 5)
+      ]);
+      
+      UserModel? user = results[0] as UserModel?;
+      List<BlogModel> recentUserBlogs = results[1] as List<BlogModel>;
+      
+      if (user == null) {
+        return {'error': 'User not found'};
+      }
+      
+      // Get analytics
+      Map<String, int> stats = await _analyticsService.getUserStats(userId);
+      
+      return {
+        'user': user,
+        'recentBlogs': recentUserBlogs,
+        'stats': stats
+      };
+    } catch (e) {
+      AppLogger.error('Error fetching user profile', e);
+      return {'error': 'Failed to load profile data'};
+    }
+  }
+  
+  /// Fetch author details for a blog
+  Future<UserModel?> getBlogAuthor(String authorId) async {
+    try {
+      return await _userService.getUser(authorId);
+    } catch (e) {
+      AppLogger.error('Error fetching blog author', e);
+      return null;
+    }
+  }
+  
+  /// Fetch authors for a list of blogs
+  Future<Map<String, UserModel>> fetchBlogAuthors(List<BlogModel> blogs) async {
+    try {
+      // Extract unique author IDs
+      Set<String> authorIds = blogs.map((blog) => blog.authorId).toSet();
+      
+      // Fetch all authors in parallel
+      Map<String, UserModel> authors = {};
+      await Future.wait(
+        authorIds.map((authorId) async {
+          UserModel? author = await _userService.getUser(authorId);
+          if (author != null) {
+            authors[authorId] = author;
+          }
+        })
+      );
+      
+      return authors;
+    } catch (e) {
+      AppLogger.error('Error fetching multiple blog authors', e);
+      return {};
+    }
   }
 }

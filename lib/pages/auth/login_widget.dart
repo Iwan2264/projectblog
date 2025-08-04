@@ -46,7 +46,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                   Shadow(
                     offset: const Offset(0, 1),
                     blurRadius: 3,
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withAlpha(77),
                   ),
                 ],
               ),
@@ -56,7 +56,7 @@ class _LoginWidgetState extends State<LoginWidget> {
               'Sign in to your account',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.white.withValues(alpha: 0.8),
+                color: Colors.white.withAlpha(204),
               ),
             ),
             const SizedBox(height: 32),
@@ -100,7 +100,7 @@ class _LoginWidgetState extends State<LoginWidget> {
                 child: Text(
                   'Forgot Password?',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: Colors.white.withAlpha(230),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -115,9 +115,9 @@ class _LoginWidgetState extends State<LoginWidget> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
+                      color: Colors.red.withAlpha(25),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                      border: Border.all(color: Colors.red.withAlpha(77)),
                     ),
                     child: Text(
                       _authController.errorMessage.value,
@@ -169,11 +169,11 @@ class _LoginWidgetState extends State<LoginWidget> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+        color: Colors.white.withAlpha(230),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withAlpha(25),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -184,6 +184,7 @@ class _LoginWidgetState extends State<LoginWidget> {
         keyboardType: keyboardType,
         obscureText: obscureText,
         validator: validator,
+        style: const TextStyle(color: Colors.black), // <-- Only entered text is always black
         decoration: InputDecoration(
           hintText: hintText,
           prefixIcon: Icon(icon, color: Colors.grey[600]),

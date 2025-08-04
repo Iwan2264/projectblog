@@ -4,6 +4,7 @@ class UserModel {
   final String uid;
   final String email;
   final String username;
+  final String? name;
   final String? photoURL;
   final String? bio;
   final DateTime createdAt;
@@ -13,11 +14,15 @@ class UserModel {
   final int postsCount;
   final List<String> interests;
   final bool isVerified;
+  final int profileViews;
+  final int totalLikesReceived;
+  final int totalBlogViews;
 
   UserModel({
     required this.uid,
     required this.email,
     required this.username,
+    this.name,
     this.photoURL,
     this.bio,
     required this.createdAt,
@@ -27,14 +32,17 @@ class UserModel {
     this.postsCount = 0,
     this.interests = const [],
     this.isVerified = false,
+    this.profileViews = 0,
+    this.totalLikesReceived = 0,
+    this.totalBlogViews = 0,
   });
 
-  // Create from Firebase user
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       uid: map['uid'] ?? '',
       email: map['email'] ?? '',
       username: map['username'] ?? '',
+      name: map['name'],
       photoURL: map['photoURL'],
       bio: map['bio'],
       createdAt: map['createdAt'] is Timestamp 
@@ -48,15 +56,18 @@ class UserModel {
       postsCount: map['postsCount'] ?? 0,
       interests: List<String>.from(map['interests'] ?? []),
       isVerified: map['isVerified'] ?? false,
+      profileViews: map['profileViews'] ?? 0,
+      totalLikesReceived: map['totalLikesReceived'] ?? 0,
+      totalBlogViews: map['totalBlogViews'] ?? 0,
     );
   }
 
-  // Convert to map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
       'email': email,
       'username': username,
+      'name': name,
       'photoURL': photoURL,
       'bio': bio,
       'createdAt': createdAt,
@@ -66,14 +77,17 @@ class UserModel {
       'postsCount': postsCount,
       'interests': interests,
       'isVerified': isVerified,
+      'profileViews': profileViews,
+      'totalLikesReceived': totalLikesReceived,
+      'totalBlogViews': totalBlogViews,
     };
   }
 
-  // Create copy with updated fields
   UserModel copyWith({
     String? uid,
     String? email,
     String? username,
+    String? name,
     String? photoURL,
     String? bio,
     DateTime? createdAt,
@@ -83,11 +97,15 @@ class UserModel {
     int? postsCount,
     List<String>? interests,
     bool? isVerified,
+    int? profileViews,
+    int? totalLikesReceived,
+    int? totalBlogViews,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
       email: email ?? this.email,
       username: username ?? this.username,
+      name: name ?? this.name,
       photoURL: photoURL ?? this.photoURL,
       bio: bio ?? this.bio,
       createdAt: createdAt ?? this.createdAt,
@@ -97,6 +115,9 @@ class UserModel {
       postsCount: postsCount ?? this.postsCount,
       interests: interests ?? this.interests,
       isVerified: isVerified ?? this.isVerified,
+      profileViews: profileViews ?? this.profileViews,
+      totalLikesReceived: totalLikesReceived ?? this.totalLikesReceived,
+      totalBlogViews: totalBlogViews ?? this.totalBlogViews,
     );
   }
 }

@@ -6,7 +6,7 @@ import 'login_widget.dart';
 import 'signup_widget.dart';
 
 class AuthPage extends StatefulWidget {
-  const AuthPage({Key? key}) : super(key: key);
+  const AuthPage({super.key});
 
   @override
   _AuthPageState createState() => _AuthPageState();
@@ -42,7 +42,6 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
           ),
         ),
         child: Container(
-          // Add a subtle overlay to improve text readability
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,

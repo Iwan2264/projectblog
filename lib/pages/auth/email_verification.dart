@@ -49,28 +49,28 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/bg.jpg'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withValues(alpha: 0.3),
-                Colors.black.withValues(alpha: 0.6),
-              ],
+    return SafeArea(
+      child: Scaffold(
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/bg.jpg'),
+              fit: BoxFit.cover,
             ),
           ),
-          child: SafeArea(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.3),
+                  Colors.black.withOpacity(0.6),
+                ],
+              ),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -87,7 +87,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           size: 24,
                         ),
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          backgroundColor: Colors.white.withOpacity(0.1),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -103,11 +103,11 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.95),
+                      color: Colors.white.withOpacity(0.95),
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
+                          color: Colors.black.withOpacity(0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -121,7 +121,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF5D4DA8).withValues(alpha: 0.1),
+                            color: const Color(0xFF5D4DA8).withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -257,7 +257,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -269,7 +269,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white.withValues(alpha: 0.8),
+                              Colors.white.withOpacity(0.8),
                             ),
                           ),
                         ),
@@ -277,7 +277,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                         Text(
                           'Checking verification status...',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color: Colors.white.withOpacity(0.8),
                             fontSize: 14,
                           ),
                         ),

@@ -17,6 +17,7 @@ class _SignupWidgetState extends State<SignupWidget> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _nameController = TextEditingController();
   
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -27,6 +28,7 @@ class _SignupWidgetState extends State<SignupWidget> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _usernameController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -65,6 +67,20 @@ class _SignupWidgetState extends State<SignupWidget> {
               ),
             ),
             const SizedBox(height: 28),
+
+            // Name field (NEW)
+            _buildTextField(
+              controller: _nameController,
+              hintText: 'Name',
+              icon: Icons.badge_rounded,
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'Name required';
+                if (value!.length < 2) return 'Name too short (min 2 chars)';
+                return null;
+              },
+              style: const TextStyle(color: Colors.black),
+            ),
+            const SizedBox(height: 14),
             
             // Username field
             _buildTextField(
@@ -73,9 +89,11 @@ class _SignupWidgetState extends State<SignupWidget> {
               icon: Icons.person_rounded,
               validator: (value) {
                 if (value?.isEmpty ?? true) return 'Username required';
-                if (value!.length < 3) return 'Username too short (min 3 chars)';
+                if (value!.length < 5) return 'Username too short (min 3 chars)';
+                // Uniqueness check is handled in signUp logic below
                 return null;
               },
+              style: const TextStyle(color: Colors.black),
             ),
             const SizedBox(height: 14),
             
@@ -90,6 +108,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 if (!GetUtils.isEmail(value!)) return 'Invalid email';
                 return null;
               },
+              style: const TextStyle(color: Colors.black),
             ),
             const SizedBox(height: 14),
             
@@ -111,6 +130,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 if (value!.length < 6) return 'Password too short (min 6 chars)';
                 return null;
               },
+              style: const TextStyle(color: Colors.black),
             ),
             const SizedBox(height: 14),
             
@@ -132,6 +152,7 @@ class _SignupWidgetState extends State<SignupWidget> {
                 if (value != _passwordController.text) return 'Passwords do not match';
                 return null;
               },
+              style: const TextStyle(color: Colors.black),
             ),
             const SizedBox(height: 20),
             
@@ -205,6 +226,7 @@ class _SignupWidgetState extends State<SignupWidget> {
     bool obscureText = false,
     Widget? suffixIcon,
     String? Function(String?)? validator,
+    TextStyle style = const TextStyle(color: Colors.black),
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -223,6 +245,7 @@ class _SignupWidgetState extends State<SignupWidget> {
         keyboardType: keyboardType,
         obscureText: obscureText,
         validator: validator,
+        style: style,
         decoration: InputDecoration(
           hintText: hintText,
           prefixIcon: Icon(icon, color: Colors.grey[600]),
@@ -237,12 +260,19 @@ class _SignupWidgetState extends State<SignupWidget> {
     );
   }
 
-  void _handleSignup() {
+  void _handleSignup() async {
     if (_formKey.currentState!.validate()) {
+      // Username uniqueness check
+      bool usernameExists = await _authController.isUsernameTaken(_usernameController.text.trim());
+      if (usernameExists) {
+        _authController.errorMessage.value = 'Username already taken';
+        return;
+      }
       _authController.signUp(
         _emailController.text.trim(),
         _passwordController.text.trim(),
         _usernameController.text.trim(),
+        _nameController.text.trim(),
       );
     }
   }
