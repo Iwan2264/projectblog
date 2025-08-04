@@ -209,6 +209,22 @@ class AuthController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
 
+      // --- USERNAME VALIDATION LOGIC ---
+      final RegExp usernameRegex = RegExp(r'^[a-z][a-z0-9]{0,15}$');
+      if (username.isEmpty) {
+        errorMessage.value = 'Username cannot be empty.';
+        return;
+      }
+      if (username.length > 16) {
+        errorMessage.value = 'Username cannot be longer than 16 characters.';
+        return;
+      }
+      if (!usernameRegex.hasMatch(username)) {
+        errorMessage.value = 'Invalid username format. Use only lowercase letters and numbers, starting with a letter.';
+        return;
+      }
+      // --- END OF VALIDATION ---
+
       // Check if username is taken
       bool usernameExists = await isUsernameTaken(username);
       if (usernameExists) {

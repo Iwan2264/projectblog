@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:projectblog/pages/auth/policy.dart';
+import 'package:projectblog/pages/auth/term.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -24,7 +26,7 @@ class AboutPage extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Theme.of(context).colorScheme.primary.withAlpha((0.1 * 255).toInt()),
+                    Theme.of(context).colorScheme.primary.withAlpha(25),
                     Theme.of(context).colorScheme.surface,
                   ],
                 ),
@@ -34,11 +36,11 @@ class AboutPage extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withAlpha((0.1 * 255).toInt()),
+                        color: Theme.of(context).colorScheme.primary.withAlpha(25),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Icon(
-                      Icons.account_balance_wallet_outlined,
+                      Icons.article_outlined,
                       size: 64,
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -47,9 +49,9 @@ class AboutPage extends StatelessWidget {
                   Text(
                     'Blog App',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -61,9 +63,9 @@ class AboutPage extends StatelessWidget {
                     child: Text(
                       'Version 1.0.0',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
                   ),
                 ],
@@ -127,6 +129,23 @@ class AboutPage extends StatelessWidget {
                     Icons.contact_support_outlined,
                   ),
 
+                  const SizedBox(height: 24),
+
+                  // Legal Section
+                  _buildInfoCard(
+                    context,
+                    'Legal',
+                    [
+                      _buildLegalRow(context, 'Privacy Policy', () {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()));
+                      }),
+                      _buildLegalRow(context, 'Terms of Service', () {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsOfServicePage()));
+                      }),
+                    ],
+                    Icons.gavel_rounded,
+                  ),
+
                   const SizedBox(height: 32),
 
                   // Footer
@@ -134,23 +153,23 @@ class AboutPage extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(77),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       children: [
                         Text(
-                          '© 2025 ExpenseTracker',
+                          '© 2025 Project Blog',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'All rights reserved',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
+                                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+                              ),
                         ),
                       ],
                     ),
@@ -175,8 +194,8 @@ class AboutPage extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ],
         ),
@@ -185,32 +204,32 @@ class AboutPage extends StatelessWidget {
           Text(
             description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              height: 1.6,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-            ),
+                  height: 1.6,
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(204),
+                ),
           ),
         if (features != null) ...[
           const SizedBox(height: 8),
           ...features.map((feature) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.check_circle_outline,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.primary,
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    feature,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-              ],
-            ),
-          )),
+              )),
         ],
       ],
     );
@@ -221,10 +240,10 @@ class AboutPage extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(77),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
+          color: Theme.of(context).colorScheme.onSurface.withAlpha(50),
         ),
       ),
       child: Column(
@@ -237,8 +256,8 @@ class AboutPage extends StatelessWidget {
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
             ],
           ),
@@ -260,9 +279,9 @@ class AboutPage extends StatelessWidget {
             child: Text(
               '$label:',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurface.withAlpha(180),
+                  ),
             ),
           ),
           Expanded(
@@ -289,9 +308,9 @@ class AboutPage extends StatelessWidget {
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
+                      fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurface.withAlpha(180),
+                    ),
               ),
               const SizedBox(height: 2),
               GestureDetector(
@@ -306,14 +325,42 @@ class AboutPage extends StatelessWidget {
                 child: Text(
                   value,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: label == 'Email' ? Theme.of(context).colorScheme.primary : null,
-                    decoration: label == 'Email' ? TextDecoration.underline : null,
-                  ),
+                        color: label == 'Email' ? Theme.of(context).colorScheme.primary : null,
+                        decoration: label == 'Email' ? TextDecoration.underline : null,
+                      ),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLegalRow(BuildContext context, String title, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+              title,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary.withAlpha(200),
+                ),
+              ),
+              Icon(
+              Icons.chevron_right_rounded,
+              color: Theme.of(context).colorScheme.onSurface.withAlpha(150),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

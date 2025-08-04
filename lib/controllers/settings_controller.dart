@@ -4,11 +4,11 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get_storage/get_storage.dart';
 
-import 'package:projectblog/pages/settings/subpages/appearance_page.dart';
-import 'package:projectblog/pages/settings/subpages/language_page.dart';
-import 'package:projectblog/pages/settings/subpages/account_page.dart';
-import 'package:projectblog/pages/settings/subpages/help_support_page.dart';
-import 'package:projectblog/pages/settings/subpages/about_page.dart';
+import 'package:projectblog/pages/settings/appearance_page.dart';
+import 'package:projectblog/pages/settings/language_page.dart';
+import 'package:projectblog/pages/settings/account_page.dart';
+import 'package:projectblog/pages/settings/help_support_page.dart';
+import 'package:projectblog/pages/settings/about_page.dart';
 import 'auth_controller.dart';
 
 class SettingsController extends GetxController {

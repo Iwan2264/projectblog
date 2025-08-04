@@ -1,10 +1,12 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import '../../controllers/auth_controller.dart';
+import 'term.dart';
+import 'policy.dart';
 
 class SignupWidget extends StatefulWidget {
-  const SignupWidget({Key? key}) : super(key: key);
+  const SignupWidget({super.key});
 
   @override
   State<SignupWidget> createState() => _SignupWidgetState();
@@ -21,6 +23,7 @@ class _SignupWidgetState extends State<SignupWidget> {
   
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _agreeToTerms = false; // State for the checkbox
 
   @override
   void dispose() {
@@ -50,10 +53,10 @@ class _SignupWidgetState extends State<SignupWidget> {
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
                 shadows: [
-                  Shadow(
+                    Shadow(
                     offset: const Offset(0, 1),
                     blurRadius: 3,
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withAlpha(80),
                   ),
                 ],
               ),
@@ -61,14 +64,14 @@ class _SignupWidgetState extends State<SignupWidget> {
             const SizedBox(height: 8),
             Text(
               'Join us and start blogging',
-              style: TextStyle(
+                style: TextStyle(
                 fontSize: 16,
-                color: Colors.white.withValues(alpha: 0.8),
+                color: Colors.white.withAlpha(200),
               ),
             ),
             const SizedBox(height: 28),
 
-            // Name field (NEW)
+            // Name field
             _buildTextField(
               controller: _nameController,
               hintText: 'Name',
@@ -89,8 +92,7 @@ class _SignupWidgetState extends State<SignupWidget> {
               icon: Icons.person_rounded,
               validator: (value) {
                 if (value?.isEmpty ?? true) return 'Username required';
-                if (value!.length < 5) return 'Username too short (min 3 chars)';
-                // Uniqueness check is handled in signUp logic below
+                if (value!.length < 3) return 'Username too short (min 3 chars)';
                 return null;
               },
               style: const TextStyle(color: Colors.black),
@@ -156,6 +158,63 @@ class _SignupWidgetState extends State<SignupWidget> {
             ),
             const SizedBox(height: 20),
             
+            // --- NEW: Terms and Privacy Checkbox and Links ---
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Checkbox(
+                  value: _agreeToTerms,
+                  onChanged: (value) {
+                    setState(() {
+                      _agreeToTerms = value ?? false;
+                    });
+                  },
+                  visualDensity: VisualDensity.compact,
+                  activeColor: Colors.white,
+                  checkColor: const Color(0xFF5D4DA8),
+                ),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      text: 'I agree to the ',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(180),
+                        fontSize: 12,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Terms of Service',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Get.to(() => const TermsOfServicePage());
+                            },
+                        ),
+                        const TextSpan(text: ' and '),
+                        TextSpan(
+                          text: 'Privacy Policy',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Get.to(() => const PrivacyPolicyPage());
+                            },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
             // Error message
             Obx(() => _authController.errorMessage.value.isNotEmpty
                 ? Container(
@@ -163,9 +222,9 @@ class _SignupWidgetState extends State<SignupWidget> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
+                      color: Colors.red.withAlpha(30),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                      border: Border.all(color: Colors.red.withAlpha(80)),
                     ),
                     child: Text(
                       _authController.errorMessage.value,
@@ -199,18 +258,6 @@ class _SignupWidgetState extends State<SignupWidget> {
                       ),
               )),
             ),
-            const SizedBox(height: 16),
-            
-            // Terms and privacy
-            Text(
-              'By creating an account, you agree to our\nTerms of Service and Privacy Policy',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 12,
-                height: 1.4,
-              ),
-            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -230,11 +277,11 @@ class _SignupWidgetState extends State<SignupWidget> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+        color: Colors.white.withAlpha(230),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withAlpha(25),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -261,13 +308,19 @@ class _SignupWidgetState extends State<SignupWidget> {
   }
 
   void _handleSignup() async {
+    // Check if terms are agreed to
+    if (!_agreeToTerms) {
+      Get.snackbar(
+        'Terms and Conditions',
+        'Please agree to the terms and conditions to continue.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withAlpha(200),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
-      // Username uniqueness check
-      bool usernameExists = await _authController.isUsernameTaken(_usernameController.text.trim());
-      if (usernameExists) {
-        _authController.errorMessage.value = 'Username already taken';
-        return;
-      }
       _authController.signUp(
         _emailController.text.trim(),
         _passwordController.text.trim(),

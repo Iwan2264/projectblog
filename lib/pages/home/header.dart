@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:projectblog/controllers/settings_controller.dart';
 
 class Header extends StatelessWidget {
-  final String userName;
-  final String photoUrl;
+  final String? name;
 
-  const Header({required this.userName, required this.photoUrl, super.key});
+  const Header({required this.name, super.key});
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -13,11 +14,9 @@ class Header extends StatelessWidget {
     return 'Good Evening! 🌙';
   }
 
-  // This function returns a different gradient based on the time
   LinearGradient _getGradient() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
-      // Sunrise Gradient
       return LinearGradient(
         colors: [Colors.orange.shade300, Colors.lightBlue.shade300],
         begin: Alignment.topLeft,
@@ -25,14 +24,12 @@ class Header extends StatelessWidget {
       );
     }
     if (hour < 17) {
-      // Afternoon Gradient
       return LinearGradient(
         colors: [Colors.blue.shade400, Colors.lightBlue.shade200],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
       );
     }
-    // Evening/Night Gradient
     return LinearGradient(
       colors: [Colors.deepPurple.shade700, Colors.indigo.shade900],
       begin: Alignment.topCenter,
@@ -42,6 +39,8 @@ class Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settingsController = Get.find<SettingsController>();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
@@ -50,10 +49,30 @@ class Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundImage: NetworkImage(photoUrl),
-          ),
+          Obx(() {
+            final profileImage = settingsController.profileImage.value;
+            final profileImagePath = settingsController.profileImagePath.value;
+
+            if (profileImage != null) {
+              return CircleAvatar(
+                radius: 40,
+                backgroundImage: FileImage(profileImage),
+                backgroundColor: Colors.grey.shade400,
+              );
+            } else if (profileImagePath != null && profileImagePath.isNotEmpty) {
+              return CircleAvatar(
+                radius: 40,
+                backgroundImage: NetworkImage(profileImagePath),
+                backgroundColor: Colors.grey.shade400,
+              );
+            } else {
+              return CircleAvatar(
+                radius: 40,
+                child: const Icon(Icons.person, size: 40, color: Colors.white),
+                backgroundColor: Colors.grey.shade400,
+              );
+            }
+          }),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
@@ -66,15 +85,17 @@ class Header extends StatelessWidget {
                     fontSize: 16,
                   ),
                 ),
-                Text(
-                  userName,
+                Obx(() => Text(
+                  settingsController.name.value.isNotEmpty 
+                      ? settingsController.name.value
+                      : name ?? '',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                   overflow: TextOverflow.ellipsis,
-                ),
+                ),),
               ],
             ),
           ),

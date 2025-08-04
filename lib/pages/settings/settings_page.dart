@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:projectblog/controllers/settings_controller.dart';
-import 'package:projectblog/pages/settings/widget/profile_widget.dart';
-import 'package:projectblog/pages/settings/widget/settings_subpages_widget.dart';
+import 'package:projectblog/pages/settings/profile_widget.dart';
+import 'package:projectblog/pages/settings/settings_subpages_widget.dart';
 
 class SettingsPage extends StatelessWidget {
   SettingsPage({super.key});

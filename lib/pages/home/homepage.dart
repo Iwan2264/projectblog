@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:projectblog/controllers/auth_controller.dart'; // Import AuthController
 import 'package:projectblog/pages/home/header.dart';
 import 'package:projectblog/pages/home/dashboard.dart'; 
 import 'package:projectblog/pages/home/blog_section.dart';
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final AuthController authController = Get.find();
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
@@ -17,12 +22,14 @@ class HomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Header(
-                  userName: "Safwan",
-                  photoUrl: 'https://i.pravatar.cc/150?img=58',
-                ),
+                Obx(() {
+                  final user = authController.userModel.value;
+                  return Header(
+                    name: user?.name ?? 'Guest',
+                  );
+                }),
                 const SizedBox(height: 10),
-               Container(
+                Container(
                   padding: const EdgeInsets.all(6.0),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
@@ -31,14 +38,14 @@ class HomePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                        Center(
+                      Center(
                         child: Text(
                           "Dashboard!",
                           style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        ),
+                      ),
                       const Dashboard(
                         totalBlogs: 15,
                         totalLikes: 1200,
