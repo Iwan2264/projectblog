@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:projectblog/pages/home/widgets/published.dart';
-import 'package:projectblog/pages/home/widgets/scheduled.dart';
-import 'package:projectblog/pages/home/widgets/draft.dart';
-
-// Your main BlogSection widget now correctly references the imported files.
+import 'package:projectblog/pages/home/widgets/published_card.dart';
+import 'package:projectblog/pages/home/widgets/scheduled_card.dart';
+import 'package:projectblog/pages/home/widgets/draft_card.dart';
+import 'package:projectblog/pages/blog/create_post_page.dart';
 class BlogSection extends StatefulWidget {
   const BlogSection({super.key});
   @override
@@ -41,16 +40,20 @@ class _BlogSectionState extends State<BlogSection> {
               ],
             ),
             InkWell(
-              onTap: () {},
+              onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const CreatePostPage()),
+              );
+              },
               child: Row(
-                children: [
-                  Text(
-                    "Create New",
-                    style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(Icons.edit, color: theme.colorScheme.primary, size: 18),
-                ],
+              children: [
+                Text(
+                "Create New",
+                style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.edit, color: theme.colorScheme.primary, size: 18),
+              ],
               ),
             )
           ],
@@ -98,7 +101,7 @@ class TabButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.7),
+            color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withAlpha(150),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
