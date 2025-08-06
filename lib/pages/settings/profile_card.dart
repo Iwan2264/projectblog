@@ -9,14 +9,17 @@ class ProfileInfoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Obx(() => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 6.0),
       child: Card(
+        elevation: 3,
+        color: theme.colorScheme.surface.withAlpha(225),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -28,7 +31,7 @@ class ProfileInfoWidget extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 32,
-                          backgroundColor: Theme.of(context).colorScheme.surface,
+                          backgroundColor: theme.colorScheme.surface,
                           backgroundImage: controller.profileImage.value != null
                               ? FileImage(controller.profileImage.value!)
                               : null,
@@ -36,7 +39,7 @@ class ProfileInfoWidget extends StatelessWidget {
                               ? Icon(
                                   Icons.person,
                                   size: 32,
-                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                                    color: theme.colorScheme.primary.withAlpha(100),
                                 )
                               : null,
                         ),
@@ -48,7 +51,7 @@ class ProfileInfoWidget extends StatelessWidget {
                               width: 20,
                               height: 20,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
+                                color: theme.colorScheme.primary,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(Icons.edit, size: 12, color: Colors.white),
@@ -65,7 +68,7 @@ class ProfileInfoWidget extends StatelessWidget {
                         controller.isEditing.value
                             ? TextFormField(
                                 controller: controller.nameController,
-                                style: Theme.of(context).textTheme.bodyLarge,
+                                style: theme.textTheme.bodyLarge,
                                 decoration: const InputDecoration(
                                   labelText: 'Name',
                                   border: InputBorder.none,
@@ -75,12 +78,12 @@ class ProfileInfoWidget extends StatelessWidget {
                               )
                             : Text(
                                 controller.name.value,
-                                style: Theme.of(context).textTheme.titleMedium,
+                                style: theme.textTheme.titleMedium,
                               ),
                         controller.isEditing.value
                             ? TextFormField(
                                 controller: controller.usernameController,
-                                style: Theme.of(context).textTheme.bodyMedium,
+                                style: theme.textTheme.bodyMedium,
                                 decoration: const InputDecoration(
                                   labelText: 'Username',
                                   border: InputBorder.none,
@@ -90,10 +93,7 @@ class ProfileInfoWidget extends StatelessWidget {
                               )
                             : Text(
                                 controller.username.value,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: Colors.grey),
+                                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                               ),
                       ],
                     ),
@@ -110,6 +110,7 @@ class ProfileInfoWidget extends StatelessWidget {
                       children: [
                         TextFormField(
                           controller: controller.emailController,
+                          style: theme.textTheme.bodyMedium,
                           decoration: const InputDecoration(
                             labelText: 'Email',
                             border: OutlineInputBorder(),
@@ -120,6 +121,7 @@ class ProfileInfoWidget extends StatelessWidget {
                         const SizedBox(height: 12),
                         TextFormField(
                           controller: controller.phoneController,
+                          style: theme.textTheme.bodyMedium,
                           decoration: const InputDecoration(
                             labelText: 'Phone Number',
                             border: OutlineInputBorder(),
@@ -139,7 +141,7 @@ class ProfileInfoWidget extends StatelessWidget {
                             const Text('Email:'),
                             Text(
                               controller.email.value,
-                              style: Theme.of(context).textTheme.bodyMedium,
+                              style: theme.textTheme.bodyMedium,
                             ),
                           ],
                         ),
@@ -150,7 +152,7 @@ class ProfileInfoWidget extends StatelessWidget {
                             const Text('Phone:'),
                             Text(
                               controller.phone.value,
-                              style: Theme.of(context).textTheme.bodyMedium,
+                              style: theme.textTheme.bodyMedium,
                             ),
                           ],
                         ),
