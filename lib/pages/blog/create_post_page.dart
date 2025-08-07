@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
-
-import 'blog_notepad_widget.dart';
-
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
 
@@ -16,10 +14,10 @@ class CreatePostPage extends StatefulWidget {
 }
 
 class _CreatePostPageState extends State<CreatePostPage> {
-  final TextEditingController _titleController = TextEditingController();
-  File? _mainImage;
 
+  final TextEditingController _titleController = TextEditingController();
   final HtmlEditorController _editorController = HtmlEditorController();
+  File? _mainImage;
 
   Timer? _debounceTimer;
   bool _isSavingDraft = false;
@@ -38,9 +36,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
     _titleController.dispose();
     super.dispose();
   }
-
   void _onContentChanged() {
-    _debounceTimer?.cancel();
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
     _debounceTimer = Timer(const Duration(seconds: 2), _autoSaveDraft);
   }
 
@@ -55,9 +52,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
   Future<void> _autoSaveDraft() async {
     final htmlContent = await _editorController.getText();
-    if (_titleController.text.trim().isEmpty && (htmlContent.trim().isEmpty || htmlContent.trim() == "<p></p>")) {
+    if (_titleController.text.trim().isEmpty &&
+        (htmlContent.trim().isEmpty || htmlContent.trim() == "<p></p>")) {
       return;
     }
+
     setState(() => _isSavingDraft = true);
     try {
       final draftData = {
@@ -65,6 +64,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
         'content': htmlContent,
         'timestamp': FieldValue.serverTimestamp(),
       };
+
       if (_draftDocId == null) {
         final docRef = await FirebaseFirestore.instance.collection('drafts').add(draftData);
         _draftDocId = docRef.id;
@@ -94,6 +94,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (_mainImage != null) {
         imageUrl = await _uploadImage(_mainImage!);
       }
+
       final htmlContent = await _editorController.getText();
       final postData = {
         'title': _titleController.text,
@@ -104,6 +105,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       };
       await FirebaseFirestore.instance.collection('posts').add(postData);
 
+      // Delete the draft after successful publishing.
       if (_draftDocId != null) {
         await FirebaseFirestore.instance.collection('drafts').doc(_draftDocId).delete();
       }
@@ -120,7 +122,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
       if (mounted) setState(() => _isPublishing = false);
     }
   }
-
+  
   Future<void> _deleteDraft() async {
     if (_draftDocId != null) {
       await FirebaseFirestore.instance.collection('drafts').doc(_draftDocId).delete();
@@ -170,6 +172,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
         appBar: AppBar(
           title: const Text('Create Post'),
           actions: [
+            // Show a "Saving..." indicator in the AppBar during auto-save.
             if (_isSavingDraft)
               const Padding(
                 padding: EdgeInsets.only(right: 16.0),
@@ -182,11 +185,14 @@ class _CreatePostPageState extends State<CreatePostPage> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
+                // Input field for the post title.
                 TextField(
                   controller: _titleController,
                   decoration: const InputDecoration(labelText: 'Post Title', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 16),
+                
+                // Area for selecting and displaying the main image.
                 GestureDetector(
                   onTap: _pickImage,
                   child: Container(
@@ -199,7 +205,48 @@ class _CreatePostPageState extends State<CreatePostPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                NotepadWidget(controller: _editorController),
+
+                // This is the rich text editor from the html_editor_enhanced package.
+                HtmlEditor(
+                  controller: _editorController,
+                  htmlEditorOptions: const HtmlEditorOptions(
+                    hint: "Start writing your post...",
+                    shouldEnsureVisible: true,
+                  ),
+                  htmlToolbarOptions: const HtmlToolbarOptions(
+                    toolbarType: ToolbarType.nativeExpandable,
+                    defaultToolbarButtons: [
+                      FontButtons(),
+                      ColorButtons(),
+                      ListButtons(),
+                      ParagraphButtons(),
+                      InsertButtons(
+                        audio: false,
+                        table: true,
+                        hr: true,
+                        otherFile: false,
+                      ),
+                      OtherButtons(
+                        fullscreen: true,
+                        codeview: true,
+                        help: false,
+                      ),
+                    ],
+                  ),
+                  otherOptions: const OtherOptions(height: 240),
+                  callbacks: Callbacks(
+                    onChangeContent: (String? content) {
+                      _onContentChanged();
+                    }
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                const Text(
+                  'For more advanced editing, see the html_editor_enhanced documentation.',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 20),
               ],
             ),

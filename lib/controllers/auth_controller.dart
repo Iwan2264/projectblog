@@ -144,6 +144,7 @@ class AuthController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
+      
       await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -159,6 +160,7 @@ class AuthController extends GetxController {
     } on TimeoutException {
       errorMessage.value = 'Connection timeout. Please try again.';
     } on FirebaseAuthException catch (e) {
+      
       switch (e.code) {
         case 'user-not-found':
           errorMessage.value = 'No user found with this email.';

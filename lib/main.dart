@@ -13,10 +13,13 @@ import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
+  // Initialize controllers
   Get.put(ThemeController());
   Get.put(AuthController());
   Get.put(SettingsController());
