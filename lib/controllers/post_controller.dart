@@ -100,7 +100,7 @@ class BlogPostController extends GetxController {
     }
   }
   
-  Future<void> saveDraft() async {
+  Future<bool> saveDraft() async {
     // Debug logging
     print('🔍 DEBUG: saveDraft called');
     print('🔍 DEBUG: Title: "${titleController.text}"');
@@ -111,7 +111,7 @@ class BlogPostController extends GetxController {
     // Prevent multiple clicks by checking if already saving
     if (isSavingDraft.value) {
       print('🔍 DEBUG: Already saving, returning');
-      return;
+      return false;
     }
 
     if (titleController.text.isEmpty && htmlContent.isEmpty) {
@@ -122,7 +122,7 @@ class BlogPostController extends GetxController {
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
       );
-      return;
+      return false;
     }
     
     // Set saving state immediately to prevent multiple clicks
@@ -139,7 +139,7 @@ class BlogPostController extends GetxController {
           backgroundColor: Colors.red.withOpacity(0.8),
           colorText: Colors.white,
         );
-        return;
+        return false;
       }
       
       // Make sure user data is loaded
@@ -156,7 +156,7 @@ class BlogPostController extends GetxController {
           backgroundColor: Colors.red.withOpacity(0.8),
           colorText: Colors.white,
         );
-        return;
+        return false;
       }
       
       await editorController.getText().then((content) async {
@@ -228,7 +228,11 @@ class BlogPostController extends GetxController {
           colorText: Colors.white,
           duration: const Duration(seconds: 1),
         );
+        
+        return true;
       });
+      
+      return true;
     } catch (e) {
       Get.snackbar(
         'Error',
@@ -237,9 +241,13 @@ class BlogPostController extends GetxController {
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
       );
+      return false;
     } finally {
       isSavingDraft.value = false;
     }
+    
+    // Default fallback return value
+    return false;
   }
   
   Future<void> publishPost() async {
@@ -405,15 +413,25 @@ class BlogPostController extends GetxController {
         );
       });        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
         
+        // Show success message
         Get.snackbar(
           'Success',
           'Post published successfully',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green.withOpacity(0.8),
           colorText: Colors.white,
+          duration: const Duration(seconds: 2),
         );
         
-        Get.back(); // Go back to previous screen after publishing
+        // Navigate to the blog detail page after a short delay
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          // First close the create post page
+          Get.back(); 
+          
+          // Navigate to blog detail page using a direct import
+          // We need to import BlogDetailPage at the top of the file
+          Get.to(() => BlogDetailPage(blogId: docId));
+        });
       });
     } catch (e) {
       Get.snackbar(

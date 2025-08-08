@@ -41,7 +41,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyASXpNACpP6u0m3UVbGX9qBZzie0wbmJkk',
+    apiKey: 'REPLACE_WITH_YOUR_API_KEY', // API key removed for security
     appId: '1:143218892601:web:99f5a501b1e90d040b12e8',
     messagingSenderId: '143218892601',
     projectId: 'projectblog001',
@@ -77,7 +77,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyASXpNACpP6u0m3UVbGX9qBZzie0wbmJkk', // Using web config for consistency
+    apiKey: 'REPLACE_WITH_YOUR_API_KEY', // API key removed for security
     appId: '1:143218892601:web:99f5a501b1e90d040b12e8',
     messagingSenderId: '143218892601',
     projectId: 'projectblog001',

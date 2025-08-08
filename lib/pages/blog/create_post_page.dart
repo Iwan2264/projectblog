@@ -183,6 +183,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 
   Future<bool?> _showExitConfirmationDialog(BuildContext context) {
+    // Check if there's unsaved content to show dialog
+    final hasContent = _controller.titleController.text.isNotEmpty || 
+                      _controller.htmlContent.value.isNotEmpty;
+    
+    if (!hasContent) {
+      // If no content, just exit without saving
+      return Future.value(true);
+    }
+    
     return showDialog<bool>(
       context: context,
       builder: (context) {
@@ -192,16 +201,29 @@ class _CreatePostPageState extends State<CreatePostPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(false);
+                // Exit without saving
+                Navigator.of(context).pop(true);
               },
-              child: const Text('Exit'),
+              child: const Text('Exit Without Saving'),
             ),
             TextButton(
               onPressed: () {
-                _controller.saveDraft();
-                Navigator.of(context).pop(true);
+                // Save and exit
+                _controller.saveDraft().then((_) {
+                  Navigator.of(context).pop(true);
+                });
               },
-              child: const Text('Save'),
+              child: const Text('Save & Exit'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Cancel and return to editing
+                Navigator.of(context).pop(false);
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).primaryColor,
+              ),
+              child: const Text('Cancel'),
             ),
           ],
         );

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
+import 'dart:io' show File;
+
+// Import Firebase options
 import 'firebase_options.dart'; 
+// Try to import dev options if they exist
+import 'firebase_options_dev.dart' if (dart.library.io) 'firebase_options.dart' as dev;
 
 import 'controllers/auth_controller.dart';
 import 'controllers/settings_controller.dart';
@@ -17,9 +22,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Initialize Firebase with consistent configuration for all platforms
+    // Check if development configuration file exists
+    bool useDevConfig = await File('lib/firebase_options_dev.dart').exists();
+    
+    // Initialize Firebase with appropriate configuration
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+      options: useDevConfig 
+        ? dev.DevFirebaseOptions.currentPlatform 
+        : DefaultFirebaseOptions.currentPlatform,
     );
     
     // Initialize controllers

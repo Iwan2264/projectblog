@@ -34,8 +34,10 @@ See [`DATABASE_STRUCTURE.md`](./DATABASE_STRUCTURE.md) for full details on Fires
    `flutter pub get`
 
 3. **Configure Firebase**  
-   - Follow setup in [`lib/firebase_options.dart`](./lib/firebase_options.dart)
-   - Add Firebase project credentials for each platform.
+   - Create a `firebase_options_dev.dart` file based on the template in the repository
+   - Add your actual Firebase API keys to this file
+   - This file should NOT be committed to version control (it's in .gitignore)
+   - See "Firebase Configuration Security" section below for more details
 
 4. **Run the app**  
    - Mobile: `flutter run`
@@ -53,6 +55,23 @@ See [`DATABASE_STRUCTURE.md`](./DATABASE_STRUCTURE.md) for full details on Fires
 
 - Firestore rules restrict updates/creates/deletes to authenticated users.
 - Blogs can be read only if published or by the author.
+
+## Firebase Configuration Security
+
+To protect your Firebase API keys and configuration:
+
+1. **Never commit real API keys to public repositories**
+   - The repository version of `firebase_options.dart` contains placeholder keys
+
+2. **Local Development Setup**
+   - Create a `lib/firebase_options_dev.dart` file (based on the provided template)
+   - Add your actual API keys to this file
+   - This file is listed in `.gitignore` to prevent accidental commits
+
+3. **If you accidentally exposed API keys:**
+   - Rotate (regenerate) the affected keys in Google Cloud Console
+   - Update your local `firebase_options_dev.dart` with the new keys
+   - Consider adding API key restrictions in Google Cloud Console
 
 ## Contributing
 
