@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -402,5 +404,137 @@ class AuthController extends GetxController {
     List<String> providers = user.providerData.map((e) => e.providerId).toList();
     if (providers.contains('password')) return 'email';
     return 'unknown';
+  }
+  
+  Future<bool> ensureAuthenticated() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) {
+        AppLogger.warning('No authenticated user found');
+        return false;
+      }
+      
+      // Refresh the token to ensure it's still valid
+      await user.getIdToken(true);
+      
+      // Check if email is verified for email/password users
+      if (user.providerData.any((element) => element.providerId == 'password') && 
+          !user.emailVerified) {
+        AppLogger.warning('User email not verified');
+        Get.offAllNamed('/verify-email');
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      AppLogger.error('Authentication check failed', e);
+      return false;
+    }
+  }
+
+  // Update user profile in Firestore
+  Future<bool> updateUserProfile({
+    String? name,
+    String? bio,
+    String? photoURL,
+    List<String>? interests,
+  }) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) {
+        AppLogger.error('No authenticated user found');
+        return false;
+      }
+
+      Map<String, dynamic> updateData = {};
+      
+      if (name != null) updateData['name'] = name;
+      if (bio != null) updateData['bio'] = bio;
+      if (photoURL != null) updateData['photoURL'] = photoURL;
+      if (interests != null) updateData['interests'] = interests;
+      
+      updateData['lastLoginAt'] = FieldValue.serverTimestamp();
+
+      await _firestore.collection('users').doc(user.uid).update(updateData);
+      
+      // Update local user model
+      if (userModel.value != null) {
+        userModel.value = userModel.value!.copyWith(
+          name: name ?? userModel.value!.name,
+          bio: bio ?? userModel.value!.bio,
+          photoURL: photoURL ?? userModel.value!.photoURL,
+          interests: interests ?? userModel.value!.interests,
+          lastLoginAt: DateTime.now(),
+        );
+        
+        // Cache updated user data
+        await _cacheUserData(userModel.value!);
+      }
+      
+      AppLogger.info('User profile updated successfully');
+      return true;
+    } catch (e) {
+      AppLogger.error('Error updating user profile', e);
+      return false;
+    }
+  }
+
+  // Upload profile image to Firebase Storage and update user profile
+  Future<String?> uploadProfileImage(File imageFile) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) {
+        AppLogger.error('No authenticated user found');
+        return null;
+      }
+
+      // Upload image to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child('${user.uid}.jpg');
+      
+      final uploadTask = storageRef.putFile(imageFile);
+      final snapshot = await uploadTask;
+      final downloadURL = await snapshot.ref.getDownloadURL();
+      
+      // Update user profile with new image URL
+      bool success = await updateUserProfile(photoURL: downloadURL);
+      
+      if (success) {
+        AppLogger.info('Profile image uploaded and updated successfully');
+        return downloadURL;
+      } else {
+        AppLogger.error('Failed to update profile with new image URL');
+        return null;
+      }
+    } catch (e) {
+      AppLogger.error('Error uploading profile image', e);
+      return null;
+    }
+  }
+
+  // Get current user's complete profile
+  Future<UserModel?> getCurrentUserProfile() async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) return null;
+
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      
+      if (userDoc.exists) {
+        UserModel updatedUser = UserModel.fromMap(userDoc.data() as Map<String, dynamic>);
+        userModel.value = updatedUser;
+        await _cacheUserData(updatedUser);
+        return updatedUser;
+      }
+      return null;
+    } catch (e) {
+      AppLogger.error('Error getting current user profile', e);
+      return null;
+    }
   }
 }

@@ -67,4 +67,137 @@ class UserService {
       AppLogger.warning('Error incrementing profile views (non-critical)', e);
     }
   }
+
+  // Get user by username
+  Future<UserModel?> getUserByUsername(String username) async {
+    try {
+      QuerySnapshot query = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+      
+      if (query.docs.isNotEmpty) {
+        return UserModel.fromMap(query.docs.first.data() as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      AppLogger.error('Error getting user by username', e);
+      return null;
+    }
+  }
+
+  // Search users by username
+  Future<List<UserModel>> searchUsers(String searchTerm, {int limit = 20}) async {
+    try {
+      QuerySnapshot query = await _firestore
+          .collection('users')
+          .where('username', isGreaterThanOrEqualTo: searchTerm.toLowerCase())
+          .where('username', isLessThanOrEqualTo: searchTerm.toLowerCase() + '\uf8ff')
+          .limit(limit)
+          .get();
+      
+      return query.docs
+          .map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      AppLogger.error('Error searching users', e);
+      return [];
+    }
+  }
+
+  // Update user profile with enhanced fields
+  Future<bool> updateUserProfile({
+    required String userId,
+    String? name,
+    String? bio,
+    List<String>? interests,
+    File? profileImage,
+  }) async {
+    try {
+      Map<String, dynamic> updateData = {};
+
+      if (name != null) updateData['name'] = name;
+      if (bio != null) updateData['bio'] = bio;
+      if (interests != null) updateData['interests'] = interests;
+
+      // Upload profile image if provided
+      if (profileImage != null) {
+        String imageUrl = await _uploadProfileImage(userId, profileImage);
+        updateData['photoURL'] = imageUrl;
+      }
+
+      updateData['lastLoginAt'] = FieldValue.serverTimestamp();
+
+      await _firestore.collection('users').doc(userId).update(updateData);
+      
+      AppLogger.info('User profile updated successfully');
+      return true;
+    } catch (e) {
+      AppLogger.error('Error updating user profile', e);
+      return false;
+    }
+  }
+
+  // Upload profile image
+  Future<String> _uploadProfileImage(String userId, File imageFile) async {
+    try {
+      Reference ref = _storage.ref().child('profile_images').child('$userId.jpg');
+      UploadTask uploadTask = ref.putFile(imageFile);
+      TaskSnapshot snapshot = await uploadTask;
+      String downloadURL = await snapshot.ref.getDownloadURL();
+      
+      AppLogger.info('Profile image uploaded successfully');
+      return downloadURL;
+    } catch (e) {
+      AppLogger.error('Error uploading profile image', e);
+      throw Exception('Failed to upload profile image');
+    }
+  }
+
+  // Delete user account and all associated data
+  Future<bool> deleteUserAccount(String userId) async {
+    try {
+      WriteBatch batch = _firestore.batch();
+      
+      // Delete user document
+      batch.delete(_firestore.collection('users').doc(userId));
+      
+      // Delete user's posts
+      QuerySnapshot userPosts = await _firestore
+          .collection('blogs')
+          .where('authorId', isEqualTo: userId)
+          .get();
+      
+      for (DocumentSnapshot doc in userPosts.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      // Delete user's comments
+      QuerySnapshot userComments = await _firestore
+          .collection('comments')
+          .where('authorId', isEqualTo: userId)
+          .get();
+      
+      for (DocumentSnapshot doc in userComments.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+      
+      // Delete profile image from storage
+      try {
+        await _storage.ref().child('profile_images').child('$userId.jpg').delete();
+      } catch (e) {
+        // Image might not exist, ignore error
+        AppLogger.warning('Profile image not found for deletion', e);
+      }
+      
+      AppLogger.info('User account deleted successfully');
+      return true;
+    } catch (e) {
+      AppLogger.error('Error deleting user account', e);
+      return false;
+    }
+  }
 }

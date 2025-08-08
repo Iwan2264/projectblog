@@ -5,6 +5,8 @@ import 'firebase_options.dart';
 
 import 'controllers/auth_controller.dart';
 import 'controllers/settings_controller.dart';
+import 'controllers/blog_controller.dart';
+import 'services/blog_service.dart';
 import 'pages/auth/auth_page.dart';
 import 'pages/auth/email_verification.dart';
 import 'widgets/navigation_scaffold.dart';
@@ -23,6 +25,8 @@ void main() async {
   Get.put(ThemeController());
   Get.put(AuthController());
   Get.put(SettingsController());
+  Get.put(BlogService());
+  Get.put(BlogController());
   
   runApp(MyApp());
 }

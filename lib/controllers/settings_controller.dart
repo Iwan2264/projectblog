@@ -9,6 +9,7 @@ import 'package:projectblog/pages/settings/language_page.dart';
 import 'package:projectblog/pages/settings/account_page.dart';
 import 'package:projectblog/pages/settings/help_support_page.dart';
 import 'package:projectblog/pages/settings/about_page.dart';
+import 'package:projectblog/models/user_model.dart';
 import 'auth_controller.dart';
 
 class SettingsController extends GetxController {
@@ -130,30 +131,12 @@ class SettingsController extends GetxController {
   void toggleEdit() {
     if (isEditing.value) {
       if (formKey.currentState!.validate()) {
-        // Update local values
-        name.value = nameController.text;
-        username.value = usernameController.text;
-        email.value = emailController.text;
-        phone.value = phoneController.text;
-
-        // Save to local storage
-        _saveToStorage();
-
-        // TODO: Update user profile in Firestore through auth controller
-        // This would require adding an updateUserProfile method to AuthController
-        
-        isEditing.value = false;
-
-        Get.snackbar('Saved', 'Profile updated successfully',
-            snackPosition: SnackPosition.BOTTOM, 
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.green.withOpacity(0.1),
-            colorText: Colors.green);
+        _saveProfile();
       } else {
         Get.snackbar('Error', 'Please correct the errors before saving.',
             snackPosition: SnackPosition.BOTTOM, 
             duration: const Duration(seconds: 2),
-            backgroundColor: Colors.red.withOpacity(0.1),
+            backgroundColor: Colors.red.withValues(alpha: 0.1),
             colorText: Colors.red);
       }
     } else {
@@ -161,25 +144,110 @@ class SettingsController extends GetxController {
     }
   }
 
-  Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      final file = File(picked.path);
-      profileImage.value = file;
-      profileImagePath.value = picked.path;
+  Future<void> _saveProfile() async {
+    try {
+      // Show loading
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
 
-      // Save to local storage
-      box.write('profileImagePath', picked.path);
-      
-      // TODO: Upload image to Firebase Storage and update user profile
-      // This would require adding an updateProfileImage method to AuthController
-      
-      Get.snackbar('Image Updated', 'Profile image updated successfully',
+      // Update local values
+      String newName = nameController.text.trim();
+      String newUsername = usernameController.text.replaceAll('@', '').trim();
+      String newEmail = emailController.text.trim();
+      String newPhone = phoneController.text.trim();
+
+      // Update user profile in Firestore through AuthController
+      bool success = await _authController.updateUserProfile(
+        name: newName,
+      );
+
+      if (success) {
+        // Update local values
+        name.value = newName;
+        username.value = '@$newUsername';
+        email.value = newEmail;
+        phone.value = newPhone;
+
+        // Save to local storage
+        _saveToStorage();
+        
+        isEditing.value = false;
+        
+        Get.back(); // Close loading
+
+        Get.snackbar('Saved', 'Profile updated successfully',
+            snackPosition: SnackPosition.BOTTOM, 
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.green.withValues(alpha: 0.1),
+            colorText: Colors.green);
+      } else {
+        Get.back(); // Close loading
+        Get.snackbar('Error', 'Failed to update profile. Please try again.',
+            snackPosition: SnackPosition.BOTTOM, 
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.red.withValues(alpha: 0.1),
+            colorText: Colors.red);
+      }
+    } catch (e) {
+      Get.back(); // Close loading
+      Get.snackbar('Error', 'An error occurred while saving.',
           snackPosition: SnackPosition.BOTTOM, 
           duration: const Duration(seconds: 2),
-          backgroundColor: Colors.green.withOpacity(0.1),
-          colorText: Colors.green);
+          backgroundColor: Colors.red.withValues(alpha: 0.1),
+          colorText: Colors.red);
+    }
+  }
+
+  Future<void> pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (picked != null) {
+        final file = File(picked.path);
+        
+        // Show loading
+        Get.dialog(
+          const Center(child: CircularProgressIndicator()),
+          barrierDismissible: false,
+        );
+
+        // Upload image to Firebase Storage through AuthController
+        String? downloadURL = await _authController.uploadProfileImage(file);
+        
+        if (downloadURL != null) {
+          // Update local values
+          profileImage.value = file;
+          profileImagePath.value = downloadURL;
+
+          // Save to local storage
+          box.write('profileImagePath', downloadURL);
+          
+          Get.back(); // Close loading
+          
+          Get.snackbar('Image Updated', 'Profile image updated successfully',
+              snackPosition: SnackPosition.BOTTOM, 
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.green.withValues(alpha: 0.1),
+              colorText: Colors.green);
+        } else {
+          Get.back(); // Close loading
+          Get.snackbar('Error', 'Failed to upload image. Please try again.',
+              snackPosition: SnackPosition.BOTTOM, 
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.red.withValues(alpha: 0.1),
+              colorText: Colors.red);
+        }
+      }
+    } catch (e) {
+      Get.back(); // Close loading if open
+      Get.snackbar('Error', 'Failed to pick image. Please try again.',
+          snackPosition: SnackPosition.BOTTOM, 
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red.withValues(alpha: 0.1),
+          colorText: Colors.red);
     }
   }
 
@@ -207,11 +275,25 @@ class SettingsController extends GetxController {
     }
   }
 
-  // Method to sync user data with backend (placeholder for future implementation)
+  // Method to sync user data with backend
   Future<void> syncUserProfile() async {
-    // TODO: Implement sync with Firestore through AuthController
-    // This would involve updating the user document in Firestore
-    // with the current profile data
+    try {
+      UserModel? updatedUser = await _authController.getCurrentUserProfile();
+      if (updatedUser != null) {
+        _updateUserDataFromAuth(updatedUser);
+        Get.snackbar('Synced', 'Profile data synchronized',
+            snackPosition: SnackPosition.BOTTOM, 
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.blue.withValues(alpha: 0.1),
+            colorText: Colors.blue);
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to sync profile data',
+          snackPosition: SnackPosition.BOTTOM, 
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red.withValues(alpha: 0.1),
+          colorText: Colors.red);
+    }
   }
 
   void navigateToSetting(String setting) {
