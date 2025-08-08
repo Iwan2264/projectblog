@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
-import 'dart:io' show File;
 
-// Import Firebase options
-import 'firebase_options.dart'; 
-// Try to import dev options if they exist
-import 'firebase_options_dev.dart' if (dart.library.io) 'firebase_options.dart' as dev;
+// Import Firebase options - use default options for now
+import 'firebase_options.dart';
 
 import 'controllers/auth_controller.dart';
 import 'controllers/settings_controller.dart';
@@ -17,19 +14,15 @@ import 'pages/auth/email_verification.dart';
 import 'widgets/navigation_scaffold.dart';
 import 'controllers/theme_controller.dart';
 import 'utils/app_theme.dart';
+import 'pages/blog/blog_detail_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // Check if development configuration file exists
-    bool useDevConfig = await File('lib/firebase_options_dev.dart').exists();
-    
-    // Initialize Firebase with appropriate configuration
+    // Initialize Firebase with default configuration
     await Firebase.initializeApp(
-      options: useDevConfig 
-        ? dev.DevFirebaseOptions.currentPlatform 
-        : DefaultFirebaseOptions.currentPlatform,
+      options: DefaultFirebaseOptions.currentPlatform,
     );
     
     // Initialize controllers
@@ -106,6 +99,17 @@ class MyApp extends StatelessWidget {
           GetPage(name: '/auth', page: () => const AuthPage()),
           GetPage(name: '/verify-email', page: () => const EmailVerificationPage()),
           GetPage(name: '/home', page: () => MainNavScaffold()),
+          // Blog detail page with dynamic parameter for blog ID
+          GetPage(
+            name: '/blog/detail/:blogId',
+            page: () {
+              // Get the blogId parameter from the URL
+              final blogId = Get.parameters['blogId'] ?? '';
+              print('🔍 DEBUG: Blog detail route called with blogId: $blogId');
+              // Make sure the parameter is correctly passed to BlogDetailPage
+              return BlogDetailPage(blogId: blogId);
+            }
+          ),
         ],
         home: Obx(() {
           if (_authController.firebaseUser.value == null) {

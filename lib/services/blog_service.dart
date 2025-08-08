@@ -46,19 +46,58 @@ class BlogService extends GetxService {
   // Get user's drafts - directly from user's blogs subcollection
   Future<List<BlogPostModel>> getUserDrafts(String userId) async {
     try {
+      print('📝 DEBUG: Fetching drafts from Firestore for user: $userId');
+      
+      // Simplified query that doesn't require a composite index
+      // Just filter by isDraft without complex ordering
       QuerySnapshot querySnapshot = await _firestore
           .collection('users')
           .doc(userId)
           .collection('blogs')
           .where('isDraft', isEqualTo: true)
-          .orderBy('updatedAt', descending: true)
           .get();
+      
+      print('📝 DEBUG: Found ${querySnapshot.docs.length} drafts in Firestore');
+      
+      // If no drafts found, log the path to help debugging
+      if (querySnapshot.docs.isEmpty) {
+        print('📝 DEBUG: No drafts found at path: users/$userId/blogs where isDraft=true');
+        
+        // Check if there are any documents at all in this subcollection
+        QuerySnapshot allDocsSnapshot = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('blogs')
+            .limit(5)
+            .get();
+            
+        if (allDocsSnapshot.docs.isEmpty) {
+          print('📝 DEBUG: No documents found at all in blogs subcollection');
+        } else {
+          print('📝 DEBUG: Found ${allDocsSnapshot.docs.length} total documents in blogs subcollection');
+          // Check if isDraft field exists in these documents
+          bool anyDraftField = false;
+          for (var doc in allDocsSnapshot.docs) {
+            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+            if (data.containsKey('isDraft')) {
+              anyDraftField = true;
+              print('📝 DEBUG: Document ${doc.id} has isDraft=${data['isDraft']}');
+            } else {
+              print('📝 DEBUG: Document ${doc.id} is missing isDraft field');
+            }
+          }
+          if (!anyDraftField) {
+            print('📝 DEBUG: No documents have isDraft field - possible data structure issue');
+          }
+        }
+      }
       
       return querySnapshot.docs
           .map((doc) => BlogPostModel.fromMap(doc.id, doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
       AppLogger.error('Error getting user drafts', e);
+      print('❌ DEBUG: Error fetching drafts: $e');
       return [];
     }
   }

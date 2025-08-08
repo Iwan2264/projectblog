@@ -32,12 +32,16 @@ class _DraftsGridState extends State<DraftsGrid> {
     
     final currentUser = _authController.userModel.value;
     if (currentUser != null) {
+      print('📝 DEBUG: Loading drafts for user ID: ${currentUser.uid}');
       final drafts = await _blogController.loadUserDrafts(currentUser.uid);
+      print('📝 DEBUG: Loaded ${drafts.length} drafts');
+      
       setState(() {
         _drafts = drafts;
         _isLoading = false;
       });
     } else {
+      print('⚠️ DEBUG: No current user found when loading drafts');
       setState(() => _isLoading = false);
     }
   }

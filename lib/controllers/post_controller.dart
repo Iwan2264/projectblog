@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:projectblog/controllers/auth_controller.dart';
 import 'package:projectblog/models/blog_post_model.dart';
+import 'package:projectblog/pages/blog/blog_detail_page.dart';
 
 class BlogPostController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -191,7 +192,7 @@ class BlogPostController extends GetxController {
         'imageURL': imageURL,
         'category': selectedCategory.value,
         'tags': <String>[],
-        'isDraft': true,
+        'isDraft': true,  // Explicitly set isDraft to true for drafts
         'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
         'updatedAt': FieldValue.serverTimestamp(),
         'publishedAt': null,
@@ -202,6 +203,10 @@ class BlogPostController extends GetxController {
         'likedBy': <String>[],
         'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
       };
+      
+      // Debug log the data schema
+      print('📝 DEBUG: Saving draft with data: ${draftData.toString()}');
+      print('📝 DEBUG: isDraft field explicitly set to: ${draftData['isDraft']}');
       
       // Save the draft to user's blogs collection
       await _firestore
@@ -245,9 +250,6 @@ class BlogPostController extends GetxController {
     } finally {
       isSavingDraft.value = false;
     }
-    
-    // Default fallback return value
-    return false;
   }
   
   Future<void> publishPost() async {
@@ -428,9 +430,18 @@ class BlogPostController extends GetxController {
           // First close the create post page
           Get.back(); 
           
-          // Navigate to blog detail page using a direct import
-          // We need to import BlogDetailPage at the top of the file
-          Get.to(() => BlogDetailPage(blogId: docId));
+          print('🚀 DEBUG: Navigating to blog detail page with ID: $docId');
+          
+          // Use dynamic routing to the blog detail page
+          // The route should match what's defined in main.dart
+          try {
+            // First try named route
+            Get.toNamed('/blog/detail/$docId');
+          } catch (e) {
+            print('⚠️ DEBUG: Error using named route: $e');
+            // Fall back to direct navigation if named route fails
+            Get.to(() => BlogDetailPage(blogId: docId));
+          }
         });
       });
     } catch (e) {
