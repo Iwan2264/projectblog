@@ -404,16 +404,23 @@ class BlogService extends GetxService {
   // Get popular posts (by likes and views)
   Future<List<BlogPostModel>> getPopularPosts({int limit = 10}) async {
     try {
+      // Use a simpler query that doesn't require a composite index
+      // First, get all non-draft posts
       QuerySnapshot querySnapshot = await _firestore
           .collection('blogs')
           .where('isDraft', isEqualTo: false)
-          .orderBy('likesCount', descending: true)
-          .limit(limit)
           .get();
       
-      return querySnapshot.docs
+      // Convert to BlogPostModel objects
+      List<BlogPostModel> allPosts = querySnapshot.docs
           .map((doc) => BlogPostModel.fromMap(doc.id, doc.data() as Map<String, dynamic>))
           .toList();
+      
+      // Sort by likes count on the client side
+      allPosts.sort((a, b) => b.likesCount.compareTo(a.likesCount));
+      
+      // Return only the requested number
+      return allPosts.take(limit).toList();
     } catch (e) {
       AppLogger.error('Error getting popular posts', e);
       return [];

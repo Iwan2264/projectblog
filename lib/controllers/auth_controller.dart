@@ -43,24 +43,32 @@ class AuthController extends GetxController {
       Get.offAllNamed('/auth');
     } else {
       try {
+        // Refresh the token
         await user.getIdToken(true);
+        
+        // For password auth users, check email verification
         if (user.providerData.any((element) => element.providerId == 'password') && 
             !user.emailVerified) {
           Get.offAllNamed('/verify-email');
-        } else {
-          await loadCachedUserData();
-          Get.offAllNamed('/home');
-          getUserData();
+          return;
         }
+        
+        // Load user data and navigate to home
+        await loadCachedUserData();
+        getUserData(); // Don't await this to avoid blocking UI
+        Get.offAllNamed('/home');
       } catch (e) {
+        // Handle token refresh errors
         AppLogger.error('Error refreshing auth token', e);
+        
+        // Still check verification status even if token refresh fails
         if (user.providerData.any((element) => element.providerId == 'password') && 
             !user.emailVerified) {
           Get.offAllNamed('/verify-email');
         } else {
           await loadCachedUserData();
+          getUserData(); // Don't await this to avoid blocking UI
           Get.offAllNamed('/home');
-          getUserData();
         }
       }
     }
@@ -147,22 +155,29 @@ class AuthController extends GetxController {
       isLoading.value = true;
       errorMessage.value = '';
       
-      await _auth.signInWithEmailAndPassword(
+      // Make sure we show any error to the user
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       ).timeout(const Duration(seconds: 15));
-      if (!(_auth.currentUser?.emailVerified ?? false)) {
+      
+      // Check if user is verified
+      if (!(userCredential.user?.emailVerified ?? false)) {
         Get.offAllNamed('/verify-email');
         return;
       }
-      await Future.wait([
-        getUserData(),
-        loadCachedUserData(),
-      ]);
+      
+      // Get user data from Firestore
+      await getUserData();
+      await loadCachedUserData();
+      
+      // Navigate to home
+      Get.offAllNamed('/home');
+      
     } on TimeoutException {
       errorMessage.value = 'Connection timeout. Please try again.';
     } on FirebaseAuthException catch (e) {
-      
+      // Handle all Firebase Auth errors explicitly
       switch (e.code) {
         case 'user-not-found':
           errorMessage.value = 'No user found with this email.';
@@ -185,9 +200,29 @@ class AuthController extends GetxController {
         default:
           errorMessage.value = 'Error during sign in: ${e.message}';
       }
+      
+      // Show a snackbar with the error message for visibility
+      Get.snackbar(
+        'Sign In Failed',
+        errorMessage.value,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.7),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
+      );
+      
     } catch (e) {
-      errorMessage.value = 'An error occurred during sign in.';
-      AppLogger.error('Error during sign in', e);
+      // Handle any other unexpected errors
+      errorMessage.value = 'An unexpected error occurred during sign in.';
+      
+      // Show a snackbar with the error
+      Get.snackbar(
+        'Error',
+        'An unexpected error occurred. Please try again later.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.7),
+        colorText: Colors.white,
+      );
     } finally {
       isLoading.value = false;
     }

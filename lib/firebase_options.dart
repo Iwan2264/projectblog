@@ -68,24 +68,21 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBp1bLHC__kAQjHtLePbRmSViBzt6QNgjg',
-    appId: '1:97241370595:ios:9867908cff753224169ad6',
-    messagingSenderId: '97241370595',
-    projectId: 'projectblog-d5bbc',
-    databaseURL: 'https://projectblog-d5bbc-default-rtdb.firebaseio.com',
-    storageBucket: 'projectblog-d5bbc.firebasestorage.app',
-    androidClientId: '97241370595-6tlp6no3f0mv0aomo6gch60m66dntgvi.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDLO9r3NF3UCcisAI5VKi0Aqgzh6Vz0pFs', // Using iOS config for consistency
+    appId: '1:143218892601:ios:07c08f887f0ece590b12e8',
+    messagingSenderId: '143218892601',
+    projectId: 'projectblog001',
+    storageBucket: 'projectblog001.firebasestorage.app',
     iosBundleId: 'com.example.projectblog',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCG7-My9GRJvWs0eIfqxnbAqsTbudr3jJo',
-    appId: '1:97241370595:web:9f4d2b32bf933d78169ad6',
-    messagingSenderId: '97241370595',
-    projectId: 'projectblog-d5bbc',
-    authDomain: 'projectblog-d5bbc.firebaseapp.com',
-    databaseURL: 'https://projectblog-d5bbc-default-rtdb.firebaseio.com',
-    storageBucket: 'projectblog-d5bbc.firebasestorage.app',
-    measurementId: 'G-TFHKK2H6TJ',
+    apiKey: 'AIzaSyASXpNACpP6u0m3UVbGX9qBZzie0wbmJkk', // Using web config for consistency
+    appId: '1:143218892601:web:99f5a501b1e90d040b12e8',
+    messagingSenderId: '143218892601',
+    projectId: 'projectblog001',
+    authDomain: 'projectblog001.firebaseapp.com',
+    storageBucket: 'projectblog001.firebasestorage.app',
+    measurementId: 'G-TS7Q7N15CR',
   );
 }

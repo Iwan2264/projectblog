@@ -1,28 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:projectblog/pages/blog/category_blogpage.dart';
+import 'package:get/get.dart';
+import '../category_blogpage.dart';
+import '../../../controllers/blog_controller.dart';
 
 class CategoriesSection extends StatelessWidget {
   const CategoriesSection({super.key});
-
-  final List<Map<String, String>> categories = const [
-    {'title': 'Technology', 'image': 'assets/thumbnail/tech.png'},
-    {'title': 'Health & Wellness', 'image': 'assets/thumbnail/health.png'},
-    {'title': 'Finance & Investing', 'image': 'assets/thumbnail/finance.png'},
-    {'title': 'Travel', 'image': 'assets/thumbnail/travel.png'},
-    {'title': 'Food & Recipes', 'image': 'assets/thumbnail/food.png'},
-    {'title': 'Lifestyle & Fashion', 'image': 'assets/thumbnail/fashion.png'},
-    {'title': 'Business & Marketing', 'image': 'assets/thumbnail/business.png'},
-    {'title': 'Education', 'image': 'assets/thumbnail/education.png'},
-    {'title': 'Arts & Culture', 'image': 'assets/thumbnail/art.png'},
-    {'title': 'Science', 'image': 'assets/thumbnail/science.png'},
-    {'title': 'Personal Growth', 'image': 'assets/thumbnail/growth.png'},
-    {'title': 'Sports & Gaming', 'image': 'assets/thumbnail/sports.png'},
-  ];
+  
+  // Map category names to their image assets
+  Map<String, String> getCategoryImage(String category) {
+    final Map<String, String> categoryImages = {
+      'Technology': 'assets/thumbnail/tech.png',
+      'Health & Wellness': 'assets/thumbnail/health.png',
+      'Finance & Investing': 'assets/thumbnail/finance.png',
+      'Travel': 'assets/thumbnail/travel.png',
+      'Food & Recipes': 'assets/thumbnail/food.png',
+      'Lifestyle & Fashion': 'assets/thumbnail/fashion.png',
+      'Business & Marketing': 'assets/thumbnail/business.png',
+      'Education': 'assets/thumbnail/education.png',
+      'Arts & Culture': 'assets/thumbnail/art.png',
+      'Science': 'assets/thumbnail/science.png',
+      'Personal Growth': 'assets/thumbnail/growth.png',
+      'Sports & Gaming': 'assets/thumbnail/sports.png',
+    };
+    
+    return {
+      'title': category,
+      'image': categoryImages[category] ?? 'assets/thumbnail/tech.png', // Default to tech if not found
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme;
     final textStyle = Theme.of(context).textTheme;
+    final BlogController blogController = Get.find<BlogController>();
+    final List<String> availableCategories = blogController.availableCategories;
 
     return SafeArea(
       bottom: false,
@@ -59,21 +71,22 @@ class CategoriesSection extends StatelessWidget {
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: categories.length,
+                  itemCount: availableCategories.length,
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
                     crossAxisSpacing: 6,
-                    mainAxisSpacing: 0,
+                    mainAxisSpacing: 10, // Added some vertical spacing to accommodate all categories
                     childAspectRatio: 0.685,
                   ),
                   itemBuilder: (context, index) {
-                    final category = categories[index];
+                    final categoryName = availableCategories[index];
+                    final category = getCategoryImage(categoryName);
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CategoryBlogsPage(categoryName: category['title']!),
+                            builder: (_) => CategoryBlogsPage(categoryName: categoryName),
                           ),
                         );
                       },
@@ -101,7 +114,7 @@ class CategoriesSection extends StatelessWidget {
                             child: Align(
                               alignment: Alignment.topCenter,
                               child: Text(
-                                category['title']!,
+                                categoryName,
                                 textAlign: TextAlign.center,
                                 style: textStyle.bodySmall?.copyWith(
                                   fontWeight: FontWeight.w500,

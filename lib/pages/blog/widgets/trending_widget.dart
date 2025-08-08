@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:projectblog/models/blog_model.dart';
-import 'package:projectblog/pages/blog/widgets/blogcard_widget.dart';
+import '../../../models/blog_post_model.dart';
+import '../../../pages/blog/widgets/blog_post_card.dart';
 
 class TrendingBlogsSection extends StatelessWidget {
-  final List<BlogModel> blogs;
+  final List<BlogPostModel> blogs;
   const TrendingBlogsSection({super.key, required this.blogs});
 
   @override
@@ -49,7 +49,7 @@ class TrendingBlogsSection extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemBuilder: (context, index) {
-                    return BlogCard(blog: blogs[index]);
+                    return BlogPostCard(blog: blogs[index]);
                   },
                 ),
               ],

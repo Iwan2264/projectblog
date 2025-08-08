@@ -201,7 +201,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                 _controller.saveDraft();
                 Navigator.of(context).pop(true);
               },
-              child: const Text('Save Draft'),
+              child: const Text('Save'),
             ),
           ],
         );

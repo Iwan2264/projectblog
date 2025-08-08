@@ -1,31 +1,61 @@
 import 'package:flutter/material.dart';
-import 'package:projectblog/models/blog_model.dart';
-import 'package:projectblog/pages/blog/widgets/category_widget.dart';
-import 'package:projectblog/pages/blog/widgets/trending_widget.dart';
+import 'package:get/get.dart';
 
-// Example dummy data
-final List<BlogModel> dummyBlogs = [
-  BlogModel(
-    id: '1',
-    authorId: 'user1',
-    authorUsername: 'Jane Doe',
-    authorPhotoURL: 'https://i.pravatar.cc/150?img=5',
-    title: 'The Ultimate Guide to Flutter Performance',
-    content: 'Flutter is a powerful cross-platform toolkit...',
-    imageURL: 'https://placehold.co/600x400/7E57C2/FFFFFF/png?text=Flutter',
-    tags: ['Flutter', 'Performance'],
-    createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-    likesCount: 102,
-    commentsCount: 10,
-    viewsCount: 900,
-    isPublished: true,
-    category: 'Technology',
-  ),
-];
+import '../../models/blog_post_model.dart';
+import '../../controllers/blog_controller.dart';
+import 'widgets/category_widget.dart';
+import 'widgets/trending_widget.dart';
 
-class BlogHomePage extends StatelessWidget {
+class BlogHomePage extends StatefulWidget {
   const BlogHomePage({super.key});
+
+  @override
+  State<BlogHomePage> createState() => _BlogHomePageState();
+}
+
+class _BlogHomePageState extends State<BlogHomePage> {
+  final BlogController _blogController = Get.find<BlogController>();
+  List<BlogPostModel> recentBlogs = [];
+  List<BlogPostModel> trendingBlogs = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBlogs();
+  }
+
+  Future<void> _loadBlogs() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // Load recent blogs
+      await _blogController.loadRecentBlogs();
+      
+      // Load popular blogs for the trending section
+      final popularBlogs = await _blogController.getPopularBlogs();
+      
+      setState(() {
+        recentBlogs = _blogController.recentBlogs;
+        trendingBlogs = popularBlogs;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      
+      // Show an error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load blogs'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,22 +71,31 @@ class BlogHomePage extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              // Implement search functionality
+            },
             icon: Icon(Icons.search, color: theme.colorScheme.primary),
           ),
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const CategoriesSection(),
-              SizedBox(height: 10),
-              TrendingBlogsSection(blogs: dummyBlogs),
-            ],
-          ),
-        ),
+        child: isLoading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadBlogs,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const CategoriesSection(),
+                      const SizedBox(height: 10),
+                      TrendingBlogsSection(blogs: trendingBlogs),
+                    ],
+                  ),
+                ),
+              ),
       ),
       backgroundColor: theme.colorScheme.surface,
     );

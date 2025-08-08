@@ -1,6 +1,57 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BlogModel {
+  // Helper method to safely parse DateTime from various formats
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    
+    try {
+      if (value is Timestamp) {
+        return value.toDate();
+      } else if (value is DateTime) {
+        return value;
+      } else if (value is String) {
+        // Try standard ISO format first
+        try {
+          return DateTime.parse(value);
+        } catch (parseError) {
+          // Try common regional formats if standard parsing fails
+          try {
+            // Check for MM/DD/YYYY format (US)
+            if (value.contains('/')) {
+              List<String> parts = value.split('/');
+              if (parts.length == 3) {
+                return DateTime(
+                  int.parse(parts[2]), // year
+                  int.parse(parts[0]), // month
+                  int.parse(parts[1]), // day
+                );
+              }
+            }
+            // Check for DD-MM-YYYY format (UK/India/many countries)
+            else if (value.contains('-')) {
+              List<String> parts = value.split('-');
+              if (parts.length == 3) {
+                return DateTime(
+                  int.parse(parts[2]), // year
+                  int.parse(parts[1]), // month
+                  int.parse(parts[0]), // day
+                );
+              }
+            }
+            throw parseError; // If none of our custom formats matched
+          } catch (e) {
+            print('Error parsing date with custom formats: $e for value: $value');
+            throw e;
+          }
+        }
+      }
+    } catch (e) {
+      print('Error parsing date in BlogModel: $e for value: $value');
+    }
+    
+    return null;
+  }
   final String id;
   final String authorId;
   final String authorUsername;
@@ -46,12 +97,8 @@ class BlogModel {
       content: map['content'] ?? '',
       imageURL: map['imageURL'],
       tags: List<String>.from(map['tags'] ?? []),
-      createdAt: map['createdAt'] is Timestamp 
-          ? (map['createdAt'] as Timestamp).toDate() 
-          : DateTime.parse(map['createdAt'].toString()),
-      updatedAt: map['updatedAt'] is Timestamp 
-          ? (map['updatedAt'] as Timestamp).toDate()
-          : DateTime.parse(map['updatedAt'].toString()),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(map['updatedAt']) ?? DateTime.now(),
       likesCount: map['likesCount'] ?? 0,
       commentsCount: map['commentsCount'] ?? 0,
       viewsCount: map['viewsCount'] ?? 0,

@@ -41,7 +41,9 @@ class BlogController extends GetxController {
     'Business & Marketing',
     'Education',
     'Arts & Culture',
-    'Science'
+    'Science',
+    'Personal Growth',
+    'Sports & Gaming'
   ].obs;
 
   @override

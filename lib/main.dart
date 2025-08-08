@@ -16,19 +16,67 @@ import 'utils/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  // Initialize controllers
-  Get.put(ThemeController());
-  Get.put(AuthController());
-  Get.put(SettingsController());
-  Get.put(BlogService());
-  Get.put(BlogController());
+  try {
+    // Initialize Firebase with consistent configuration for all platforms
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    
+    // Initialize controllers
+    Get.put(ThemeController());
+    Get.put(AuthController());
+    Get.put(SettingsController());
+    Get.put(BlogService());
+    Get.put(BlogController());
+  } catch (e) {
+    // If Firebase initialization fails, show a meaningful error
+    runApp(ErrorApp(error: e.toString()));
+    return;
+  }
   
   runApp(MyApp());
+}
+
+// Simple error app to show Firebase initialization errors
+class ErrorApp extends StatelessWidget {
+  final String error;
+  const ErrorApp({super.key, required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 64),
+                const SizedBox(height: 16),
+                const Text(
+                  'Firebase Initialization Error',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  error,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    main();
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 class MyApp extends StatelessWidget {
   final ThemeController _themeController = Get.find<ThemeController>();
