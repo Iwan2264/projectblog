@@ -75,8 +75,16 @@ class BlogPostController extends GetxController {
   }
   
   Future<void> saveDraft() async {
+    // Debug logging
+    print('🔍 DEBUG: saveDraft called');
+    print('🔍 DEBUG: Title: "${titleController.text}"');
+    print('🔍 DEBUG: Content length: ${htmlContent.value.length}');
+    print('🔍 DEBUG: Category: "${selectedCategory.value}"');
+    print('🔍 DEBUG: Current user: ${_authController.userModel.value?.uid}');
+    
     // Prevent multiple clicks by checking if already saving
     if (isSavingDraft.value) {
+      print('🔍 DEBUG: Already saving, returning');
       return;
     }
 
@@ -169,9 +177,12 @@ class BlogPostController extends GetxController {
           SetOptions(merge: true),
         );
         
+        print('✅ DEBUG: Draft saved to Firestore with ID: $docId');
+        
         // Update the draft ID if it was a new draft
         if (draftId.isEmpty) {
           draftId.value = docId;
+          print('✅ DEBUG: Draft ID updated to: $docId');
         }
         
         // Update the image URL
@@ -200,8 +211,16 @@ class BlogPostController extends GetxController {
   }
   
   Future<void> publishPost() async {
+    // Debug logging
+    print('🚀 DEBUG: publishPost called');
+    print('🚀 DEBUG: Title: "${titleController.text}"');
+    print('🚀 DEBUG: Content length: ${htmlContent.value.length}');
+    print('🚀 DEBUG: Category: "${selectedCategory.value}"');
+    print('🚀 DEBUG: Current user: ${_authController.userModel.value?.uid}');
+    
     // Prevent multiple clicks by checking if already publishing
     if (isPublishing.value) {
+      print('🚀 DEBUG: Already publishing, returning');
       return;
     }
 
@@ -337,6 +356,8 @@ class BlogPostController extends GetxController {
           postData,
           SetOptions(merge: true),
         );
+        
+        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
         
         Get.snackbar(
           'Success',

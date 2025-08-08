@@ -140,9 +140,12 @@ class _DraftsGridState extends State<DraftsGrid> {
                           ),
                           errorWidget: (context, url, error) => Container(
                             color: Colors.grey[200],
-                            child: const Icon(
-                              Icons.image_not_supported,
-                              color: Colors.grey,
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_outlined,
+                                size: 32,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         ),
