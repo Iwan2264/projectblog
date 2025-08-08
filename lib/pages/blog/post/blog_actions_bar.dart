@@ -9,14 +9,14 @@ class BlogActionsBar extends StatelessWidget {
   final Function() onDelete;
 
   const BlogActionsBar({
-    Key? key,
+    super.key,
     required this.isSavingDraft,
     required this.isPublishing,
     required this.isDraftExists,
     required this.onSaveDraft,
     required this.onPublish,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
