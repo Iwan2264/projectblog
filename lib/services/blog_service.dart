@@ -16,6 +16,7 @@ class BlogService extends GetxService {
     String? category,
   }) async {
     try {
+      // We still use the global blogs collection for efficient querying of all published posts
       Query query = _firestore
           .collection('blogs')
           .where('isDraft', isEqualTo: false)
@@ -42,12 +43,13 @@ class BlogService extends GetxService {
     }
   }
 
-  // Get user's drafts
+  // Get user's drafts - directly from user's blogs subcollection
   Future<List<BlogPostModel>> getUserDrafts(String userId) async {
     try {
       QuerySnapshot querySnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
           .collection('blogs')
-          .where('authorId', isEqualTo: userId)
           .where('isDraft', isEqualTo: true)
           .orderBy('updatedAt', descending: true)
           .get();
@@ -61,12 +63,13 @@ class BlogService extends GetxService {
     }
   }
 
-  // Get user's published posts
+  // Get user's published posts - directly from user's blogs subcollection
   Future<List<BlogPostModel>> getUserPublishedPosts(String userId) async {
     try {
       QuerySnapshot querySnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
           .collection('blogs')
-          .where('authorId', isEqualTo: userId)
           .where('isDraft', isEqualTo: false)
           .orderBy('publishedAt', descending: true)
           .get();
@@ -83,14 +86,60 @@ class BlogService extends GetxService {
   // Get single post by ID
   Future<BlogPostModel?> getPostById(String postId) async {
     try {
+      // First try the global blogs collection (for performance)
       DocumentSnapshot doc = await _firestore.collection('blogs').doc(postId).get();
       
       if (doc.exists) {
         return BlogPostModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
       }
+      
+      // If not found, try to find in user's blogs collections
+      // (this is a more expensive operation, but ensures we find drafts too)
+      String? authorId = await _findPostAuthorId(postId);
+      
+      if (authorId != null) {
+        DocumentSnapshot userBlogDoc = await _firestore
+            .collection('users')
+            .doc(authorId)
+            .collection('blogs')
+            .doc(postId)
+            .get();
+            
+        if (userBlogDoc.exists) {
+          return BlogPostModel.fromMap(userBlogDoc.id, userBlogDoc.data() as Map<String, dynamic>);
+        }
+      }
+      
       return null;
     } catch (e) {
       AppLogger.error('Error getting post by ID', e);
+      return null;
+    }
+  }
+  
+  // Helper method to find a post's author ID
+  Future<String?> _findPostAuthorId(String postId) async {
+    try {
+      // Query to find the post in any user's blogs collection
+      QuerySnapshot usersSnapshot = await _firestore.collection('users').get();
+      
+      for (var userDoc in usersSnapshot.docs) {
+        String userId = userDoc.id;
+        DocumentSnapshot blogDoc = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('blogs')
+            .doc(postId)
+            .get();
+            
+        if (blogDoc.exists) {
+          return userId;
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      AppLogger.error('Error finding post author ID', e);
       return null;
     }
   }
@@ -98,18 +147,37 @@ class BlogService extends GetxService {
   // Like/Unlike a post
   Future<bool> togglePostLike(String postId, String userId) async {
     try {
-      DocumentReference postRef = _firestore.collection('blogs').doc(postId);
+      // Get the post from global blogs collection
+      DocumentReference globalPostRef = _firestore.collection('blogs').doc(postId);
+      DocumentSnapshot globalPostDoc = await globalPostRef.get();
+      
+      if (!globalPostDoc.exists) {
+        throw Exception('Post not found in global collection');
+      }
+      
+      // Get the author ID from the post
+      Map<String, dynamic> data = globalPostDoc.data() as Map<String, dynamic>;
+      String authorId = data['authorId'];
+      
+      // Get reference to post in user's blogs collection
+      DocumentReference userPostRef = _firestore
+          .collection('users')
+          .doc(authorId)
+          .collection('blogs')
+          .doc(postId);
       
       return await _firestore.runTransaction((transaction) async {
-        DocumentSnapshot postDoc = await transaction.get(postRef);
+        // Get fresh copies of both documents in the transaction
+        DocumentSnapshot globalPostDocInTx = await transaction.get(globalPostRef);
+        DocumentSnapshot userPostDocInTx = await transaction.get(userPostRef);
         
-        if (!postDoc.exists) {
+        if (!globalPostDocInTx.exists || !userPostDocInTx.exists) {
           throw Exception('Post not found');
         }
         
-        Map<String, dynamic> data = postDoc.data() as Map<String, dynamic>;
-        List<String> likedBy = List<String>.from(data['likedBy'] ?? []);
-        int likesCount = data['likesCount'] ?? 0;
+        Map<String, dynamic> globalData = globalPostDocInTx.data() as Map<String, dynamic>;
+        List<String> likedBy = List<String>.from(globalData['likedBy'] ?? []);
+        int likesCount = globalData['likesCount'] ?? 0;
         
         bool isLiked = likedBy.contains(userId);
         
@@ -123,10 +191,14 @@ class BlogService extends GetxService {
           likesCount++;
         }
         
-        transaction.update(postRef, {
+        // Update both copies of the post
+        Map<String, dynamic> updates = {
           'likedBy': likedBy,
           'likesCount': likesCount,
-        });
+        };
+        
+        transaction.update(globalPostRef, updates);
+        transaction.update(userPostRef, updates);
         
         return !isLiked; // Return the new like status
       });
@@ -139,9 +211,25 @@ class BlogService extends GetxService {
   // Increment post view count
   Future<void> incrementViewCount(String postId) async {
     try {
+      // First update the global blogs collection
       await _firestore.collection('blogs').doc(postId).update({
         'viewsCount': FieldValue.increment(1),
       });
+      
+      // Then find and update the user's copy
+      DocumentSnapshot globalPostDoc = await _firestore.collection('blogs').doc(postId).get();
+      if (globalPostDoc.exists) {
+        String authorId = (globalPostDoc.data() as Map<String, dynamic>)['authorId'];
+        
+        await _firestore
+            .collection('users')
+            .doc(authorId)
+            .collection('blogs')
+            .doc(postId)
+            .update({
+              'viewsCount': FieldValue.increment(1),
+            });
+      }
     } catch (e) {
       AppLogger.error('Error incrementing view count', e);
     }
@@ -218,6 +306,13 @@ class BlogService extends GetxService {
   // Add comment to post
   Future<String?> addComment(String postId, String content, String userId, UserModel user) async {
     try {
+      // First get the blog post to find its author
+      DocumentSnapshot globalPostDoc = await _firestore.collection('blogs').doc(postId).get();
+      if (!globalPostDoc.exists) {
+        throw Exception('Blog post not found');
+      }
+      
+      String authorId = (globalPostDoc.data() as Map<String, dynamic>)['authorId'];
       String commentId = _firestore.collection('comments').doc().id;
       
       CommentModel comment = CommentModel(
@@ -233,15 +328,37 @@ class BlogService extends GetxService {
       );
 
       await _firestore.runTransaction((transaction) async {
-        // Add comment
+        // Add comment to global comments collection
         transaction.set(
           _firestore.collection('comments').doc(commentId),
           comment.toMap(),
         );
         
-        // Increment comment count in post
+        // Add comment to blog's comments subcollection
+        transaction.set(
+          _firestore
+              .collection('users')
+              .doc(authorId)
+              .collection('blogs')
+              .doc(postId)
+              .collection('comments')
+              .doc(commentId),
+          comment.toMap(),
+        );
+        
+        // Increment comment count in global blogs collection
         transaction.update(
           _firestore.collection('blogs').doc(postId),
+          {'commentsCount': FieldValue.increment(1)},
+        );
+        
+        // Increment comment count in user's blogs collection
+        transaction.update(
+          _firestore
+              .collection('users')
+              .doc(authorId)
+              .collection('blogs')
+              .doc(postId),
           {'commentsCount': FieldValue.increment(1)},
         );
       });
@@ -256,9 +373,21 @@ class BlogService extends GetxService {
   // Get comments for a post
   Future<List<CommentModel>> getPostComments(String postId) async {
     try {
+      // First get the post to find the author
+      DocumentSnapshot globalPostDoc = await _firestore.collection('blogs').doc(postId).get();
+      if (!globalPostDoc.exists) {
+        throw Exception('Blog post not found');
+      }
+      
+      String authorId = (globalPostDoc.data() as Map<String, dynamic>)['authorId'];
+      
+      // Get comments from the blog's comments subcollection
       QuerySnapshot querySnapshot = await _firestore
+          .collection('users')
+          .doc(authorId)
+          .collection('blogs')
+          .doc(postId)
           .collection('comments')
-          .where('postId', isEqualTo: postId)
           .where('parentCommentId', isNull: true) // Only top-level comments
           .orderBy('createdAt', descending: false)
           .get();

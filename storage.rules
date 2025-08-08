@@ -1,24 +1,57 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Blog images - allow read for all, write for authenticated users
+    // Helper functions for common checks
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // User content structure
+    match /users/{userId}/{allPaths=**} {
+      // Allow anyone to read user content (profile pictures, blog images)
+      allow read: if true;
+      
+      // Allow write only by the user who owns the folder
+      allow write: if isOwner(userId) && isValidImage();
+    }
+    
+    // User profile images specific rules
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+    
+    // User blog images specific rules
+    match /users/{userId}/blogs/{blogId}/{allImages=**} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+    
+    // Legacy paths for backward compatibility
     match /blog_images/{imageId=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      // Disallow new writes to legacy paths
+      allow write: if false;
     }
     
-    // Profile images - allow read for all, write only for owner with specific file types
     match /profile_images/{userId} {
       allow read: if true;
-      allow write: if request.auth != null 
-                   && request.auth.uid == userId
-                   && resource.name.matches('.*\\.(jpg|jpeg|png|webp|gif)$');
+      // Disallow new writes to legacy paths
+      allow write: if false;
     }
     
-    // Default rule - more permissive for development
+    // Default rule - disallow access unless specific rules allow it
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if false;
     }
   }
 }

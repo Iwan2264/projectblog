@@ -47,21 +47,47 @@ class BlogPostController extends GetxController {
       isLoading.value = true;
       draftId.value = id;
       
-      DocumentSnapshot doc = await _firestore.collection('blogs').doc(id).get();
+      // Get the current user
+      final currentUser = _authController.userModel.value;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
       
-      if (doc.exists) {
-        final data = doc.data() as Map<String, dynamic>;
+      print('🔍 DEBUG: Loading draft with ID: $id for user: ${currentUser.uid}');
+      
+      // Try to load from the user's blogs subcollection first
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('blogs')
+          .doc(id)
+          .get();
+      
+      // If not found in user collection, try the global blogs collection (for backward compatibility)
+      if (!userDoc.exists) {
+        print('🔍 DEBUG: Draft not found in user collection, trying global collection');
+        userDoc = await _firestore.collection('blogs').doc(id).get();
+      }
+      
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
         
         titleController.text = data['title'] ?? '';
         htmlContent.value = data['content'] ?? '';
-        imageUrl.value = data['imageUrl'] ?? '';
+        imageUrl.value = data['imageURL'] ?? ''; // Note the capital URL in imageURL
         selectedCategory.value = data['category'] ?? '';
+        
+        print('🔍 DEBUG: Draft loaded successfully. Title: ${data['title']}, Category: ${data['category']}');
         
         // Wait a bit for the editor to initialize before setting content
         await Future.delayed(const Duration(milliseconds: 500));
         editorController.setText(htmlContent.value);
+      } else {
+        print('⚠️ DEBUG: Draft not found in either collection');
+        throw Exception('Draft not found');
       }
     } catch (e) {
+      print('❌ DEBUG: Error loading draft: $e');
       Get.snackbar(
         'Error',
         'Failed to load draft: $e',
@@ -141,43 +167,49 @@ class BlogPostController extends GetxController {
         
         String? imageURL = imageUrl.value;
         
-        // If we have a new image, upload it
-        if (mainImage.value != null) {
-          final ref = _storage.ref().child('blog_images').child('$docId.jpg');
-          final uploadTask = ref.putFile(mainImage.value!);
-          final snapshot = await uploadTask;
-          imageURL = await snapshot.ref.getDownloadURL();
-        }
-        
-        final draftData = {
-          'authorId': currentUser.uid,
-          'authorUsername': currentUser.username,
-          'authorPhotoURL': currentUser.photoURL,
-          'authorName': currentUser.name,
-          'title': titleController.text,
-          'content': htmlContent.value,
-          'imageURL': imageURL,
-          'category': selectedCategory.value,
-          'tags': <String>[],
-          'isDraft': true,
-          'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'publishedAt': null,
-          'likesCount': 0,
-          'commentsCount': 0,
-          'viewsCount': 0,
-          'featured': false,
-          'likedBy': <String>[],
-          'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
-        };
-        
-        // Save the draft
-        await _firestore.collection('blogs').doc(docId).set(
-          draftData,
-          SetOptions(merge: true),
-        );
-        
-        print('✅ DEBUG: Draft saved to Firestore with ID: $docId');
+      // If we have a new image, upload it
+      if (mainImage.value != null) {
+        // Use structured path for blog images
+        final ref = _storage.ref()
+            .child('users')
+            .child(currentUser.uid)
+            .child('blogs')
+            .child(docId)
+            .child('main.jpg');
+        final uploadTask = ref.putFile(mainImage.value!);
+        final snapshot = await uploadTask;
+        imageURL = await snapshot.ref.getDownloadURL();
+      }
+      
+      final draftData = {
+        'authorId': currentUser.uid,
+        'authorUsername': currentUser.username,
+        'authorPhotoURL': currentUser.photoURL,
+        'authorName': currentUser.name,
+        'title': titleController.text,
+        'content': htmlContent.value,
+        'imageURL': imageURL,
+        'category': selectedCategory.value,
+        'tags': <String>[],
+        'isDraft': true,
+        'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'publishedAt': null,
+        'likesCount': 0,
+        'commentsCount': 0,
+        'viewsCount': 0,
+        'featured': false,
+        'likedBy': <String>[],
+        'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
+      };
+      
+      // Save the draft to user's blogs collection
+      await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('blogs')
+          .doc(docId)
+          .set(draftData, SetOptions(merge: true));        print('✅ DEBUG: Draft saved to Firestore with ID: $docId');
         
         // Update the draft ID if it was a new draft
         if (draftId.isEmpty) {
@@ -321,43 +353,57 @@ class BlogPostController extends GetxController {
         
         String? imageURL = imageUrl.value;
         
-        // If we have a new image, upload it
-        if (mainImage.value != null) {
-          final ref = _storage.ref().child('blog_images').child('$docId.jpg');
-          final uploadTask = ref.putFile(mainImage.value!);
-          final snapshot = await uploadTask;
-          imageURL = await snapshot.ref.getDownloadURL();
-        }
-        
-        final postData = {
-          'authorId': currentUser.uid,
-          'authorUsername': currentUser.username,
-          'authorPhotoURL': currentUser.photoURL,
-          'authorName': currentUser.name,
-          'title': titleController.text,
-          'content': htmlContent.value,
-          'imageURL': imageURL,
-          'category': selectedCategory.value,
-          'tags': <String>[],
-          'isDraft': false,
-          'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'publishedAt': FieldValue.serverTimestamp(),
-          'likesCount': 0,
-          'commentsCount': 0,
-          'viewsCount': 0,
-          'featured': false,
-          'likedBy': <String>[],
-          'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
-        };
-        
-        // Use set with merge to handle both new posts and draft updates
-        await _firestore.collection('blogs').doc(docId).set(
+      // If we have a new image, upload it
+      if (mainImage.value != null) {
+        final ref = _storage.ref()
+            .child('users')
+            .child(currentUser.uid)
+            .child('blogs')
+            .child(docId)
+            .child('main.jpg');
+        final uploadTask = ref.putFile(mainImage.value!);
+        final snapshot = await uploadTask;
+        imageURL = await snapshot.ref.getDownloadURL();
+      }
+      
+      final postData = {
+        'authorId': currentUser.uid,
+        'authorUsername': currentUser.username,
+        'authorPhotoURL': currentUser.photoURL,
+        'authorName': currentUser.name,
+        'title': titleController.text,
+        'content': htmlContent.value,
+        'imageURL': imageURL,
+        'category': selectedCategory.value,
+        'tags': <String>[],
+        'isDraft': false,
+        'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'publishedAt': FieldValue.serverTimestamp(),
+        'likesCount': 0,
+        'commentsCount': 0,
+        'viewsCount': 0,
+        'featured': false,
+        'likedBy': <String>[],
+        'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
+      };
+      
+      // Use transaction to save to both user's collection and global blogs collection
+      await _firestore.runTransaction((transaction) async {
+        // Save to user's blogs collection
+        transaction.set(
+          _firestore.collection('users').doc(currentUser.uid).collection('blogs').doc(docId),
           postData,
-          SetOptions(merge: true),
+          SetOptions(merge: true)
         );
         
-        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
+        // Also save to global blogs collection for easier querying
+        transaction.set(
+          _firestore.collection('blogs').doc(docId),
+          postData,
+          SetOptions(merge: true)
+        );
+      });        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
         
         Get.snackbar(
           'Success',
@@ -426,16 +472,37 @@ class BlogPostController extends GetxController {
     try {
       isSavingDraft.value = true;
       
-      // Delete from Firestore
-      await _firestore.collection('blogs').doc(draftId.value).delete();
+      // Get current user ID
+      final currentUser = _authController.userModel.value;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
       
-      // Delete associated image if exists
-      if (imageUrl.value.isNotEmpty) {
-        try {
-          await _storage.refFromURL(imageUrl.value).delete();
-        } catch (e) {
-          print('Error deleting image: $e');
+      // Delete from user's blogs collection in Firestore
+      await _firestore.collection('users').doc(currentUser.uid).collection('blogs').doc(draftId.value).delete();
+      
+      // If published, also delete from global blogs collection
+      await _firestore.collection('blogs').doc(draftId.value).get().then((doc) {
+        if (doc.exists) {
+          _firestore.collection('blogs').doc(draftId.value).delete();
         }
+      });
+      
+      // Delete associated images
+      try {
+        await _storage.ref()
+            .child('users')
+            .child(currentUser.uid)
+            .child('blogs')
+            .child(draftId.value)
+            .listAll()
+            .then((result) {
+              result.items.forEach((itemRef) {
+                itemRef.delete();
+              });
+            });
+      } catch (e) {
+        print('Error deleting blog images: $e');
       }
       
       Get.snackbar(

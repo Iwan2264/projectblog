@@ -27,7 +27,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
     _controller = Get.put(BlogPostController());
     
     if (widget.draftId != null) {
+      // Debug logging
+      print('📝 DEBUG: Loading draft with ID: ${widget.draftId}');
       _controller.loadDraft(widget.draftId!);
+    } else {
+      print('📝 DEBUG: Creating new draft');
     }
   }
 

@@ -11,7 +11,23 @@ class UserService {
 
   Future<void> createUser(UserModel user) async {
     try {
-      await _firestore.collection('users').doc(user.uid).set(user.toMap());
+      // Create main user document with profile data
+      await _firestore.collection('users').doc(user.uid).set({
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastUpdated': FieldValue.serverTimestamp(),
+      });
+      
+      // Create profile document in subcollection
+      await _firestore.collection('users').doc(user.uid).collection('profile').doc('data').set(user.toMap());
+      
+      // Create username lookup for uniqueness checks
+      if (user.username.isNotEmpty) {
+        await _firestore.collection('usernames').doc(user.username.toLowerCase()).set({
+          'userId': user.uid,
+          'createdAt': FieldValue.serverTimestamp()
+        });
+      }
+      
       AppLogger.info('User created successfully: ${user.uid}');
     } catch (e) {
       AppLogger.error('Error creating user', e);
@@ -21,7 +37,7 @@ class UserService {
 
   Future<UserModel?> getUser(String uid) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).collection('profile').doc('data').get();
       if (doc.exists) {
         return UserModel.fromMap(doc.data() as Map<String, dynamic>);
       }
@@ -34,7 +50,32 @@ class UserService {
 
   Future<void> updateUser(String uid, Map<String, dynamic> data) async {
     try {
-      await _firestore.collection('users').doc(uid).update(data);
+      // Update profile document in subcollection
+      await _firestore.collection('users').doc(uid).collection('profile').doc('data').update(data);
+      
+      // Update main document timestamp
+      await _firestore.collection('users').doc(uid).update({
+        'lastUpdated': FieldValue.serverTimestamp()
+      });
+      
+      // If username is being updated, update the lookup collection
+      if (data.containsKey('username')) {
+        // Get the old username first
+        UserModel? user = await getUser(uid);
+        if (user != null && user.username != data['username']) {
+          // Delete old username document
+          if (user.username.isNotEmpty) {
+            await _firestore.collection('usernames').doc(user.username.toLowerCase()).delete();
+          }
+          
+          // Create new username document
+          await _firestore.collection('usernames').doc(data['username'].toLowerCase()).set({
+            'userId': uid,
+            'createdAt': FieldValue.serverTimestamp()
+          });
+        }
+      }
+      
       AppLogger.info('User updated successfully: $uid');
     } catch (e) {
       AppLogger.error('Error updating user', e);
@@ -45,7 +86,8 @@ class UserService {
   Future<String> uploadProfilePicture(String uid, XFile imageFile) async {
     try {
       File file = File(imageFile.path);
-      Reference ref = _storage.ref().child('profile_pictures').child('$uid.jpg');
+      // Use structured path for profile pictures
+      Reference ref = _storage.ref().child('users').child(uid).child('profile').child('profile.jpg');
       UploadTask uploadTask = ref.putFile(file);
       TaskSnapshot snapshot = await uploadTask;
       String downloadURL = await snapshot.ref.getDownloadURL();
@@ -71,14 +113,18 @@ class UserService {
   // Get user by username
   Future<UserModel?> getUserByUsername(String username) async {
     try {
-      QuerySnapshot query = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username)
-          .limit(1)
+      // First lookup the username to get the user ID
+      DocumentSnapshot usernameDoc = await _firestore
+          .collection('usernames')
+          .doc(username.toLowerCase())
           .get();
       
-      if (query.docs.isNotEmpty) {
-        return UserModel.fromMap(query.docs.first.data() as Map<String, dynamic>);
+      if (usernameDoc.exists) {
+        // Get the user ID from the username document
+        String userId = (usernameDoc.data() as Map<String, dynamic>)['userId'];
+        
+        // Then get the user profile data
+        return await getUser(userId);
       }
       return null;
     } catch (e) {
@@ -90,16 +136,25 @@ class UserService {
   // Search users by username
   Future<List<UserModel>> searchUsers(String searchTerm, {int limit = 20}) async {
     try {
+      // Search usernames collection for matching usernames
       QuerySnapshot query = await _firestore
-          .collection('users')
-          .where('username', isGreaterThanOrEqualTo: searchTerm.toLowerCase())
-          .where('username', isLessThanOrEqualTo: searchTerm.toLowerCase() + '\uf8ff')
+          .collection('usernames')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: searchTerm.toLowerCase())
+          .where(FieldPath.documentId, isLessThanOrEqualTo: searchTerm.toLowerCase() + '\uf8ff')
           .limit(limit)
           .get();
       
-      return query.docs
-          .map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>))
-          .toList();
+      // Get user data for each username match
+      List<UserModel> users = [];
+      for (var doc in query.docs) {
+        String userId = (doc.data() as Map<String, dynamic>)['userId'];
+        UserModel? user = await getUser(userId);
+        if (user != null) {
+          users.add(user);
+        }
+      }
+      
+      return users;
     } catch (e) {
       AppLogger.error('Error searching users', e);
       return [];
@@ -142,7 +197,7 @@ class UserService {
   // Upload profile image
   Future<String> _uploadProfileImage(String userId, File imageFile) async {
     try {
-      Reference ref = _storage.ref().child('profile_images').child('$userId.jpg');
+      Reference ref = _storage.ref().child('users').child(userId).child('profile').child('profile.jpg');
       UploadTask uploadTask = ref.putFile(imageFile);
       TaskSnapshot snapshot = await uploadTask;
       String downloadURL = await snapshot.ref.getDownloadURL();
@@ -158,39 +213,55 @@ class UserService {
   // Delete user account and all associated data
   Future<bool> deleteUserAccount(String userId) async {
     try {
+      // Get the user to find their username
+      UserModel? user = await getUser(userId);
       WriteBatch batch = _firestore.batch();
       
-      // Delete user document
+      // Delete username lookup document if exists
+      if (user != null && user.username.isNotEmpty) {
+        batch.delete(_firestore.collection('usernames').doc(user.username.toLowerCase()));
+      }
+      
+      // Delete all user's blogs
+      QuerySnapshot userBlogsSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('blogs')
+          .get();
+      
+      for (DocumentSnapshot doc in userBlogsSnapshot.docs) {
+        // Delete blog document from user's subcollection
+        batch.delete(doc.reference);
+        
+        // Also delete from global blogs collection
+        batch.delete(_firestore.collection('blogs').doc(doc.id));
+        
+        // Delete comments for this blog
+        QuerySnapshot blogCommentsSnapshot = await _firestore
+            .collection('comments')
+            .where('postId', isEqualTo: doc.id)
+            .get();
+        
+        for (DocumentSnapshot commentDoc in blogCommentsSnapshot.docs) {
+          batch.delete(commentDoc.reference);
+        }
+      }
+      
+      // Delete user profile document
+      batch.delete(_firestore.collection('users').doc(userId).collection('profile').doc('data'));
+      
+      // Delete user main document
       batch.delete(_firestore.collection('users').doc(userId));
       
-      // Delete user's posts
-      QuerySnapshot userPosts = await _firestore
-          .collection('blogs')
-          .where('authorId', isEqualTo: userId)
-          .get();
-      
-      for (DocumentSnapshot doc in userPosts.docs) {
-        batch.delete(doc.reference);
-      }
-      
-      // Delete user's comments
-      QuerySnapshot userComments = await _firestore
-          .collection('comments')
-          .where('authorId', isEqualTo: userId)
-          .get();
-      
-      for (DocumentSnapshot doc in userComments.docs) {
-        batch.delete(doc.reference);
-      }
-      
+      // Commit all Firestore deletions
       await batch.commit();
       
-      // Delete profile image from storage
+      // Delete all user storage files
       try {
-        await _storage.ref().child('profile_images').child('$userId.jpg').delete();
+        await _deleteFolder('users/$userId');
       } catch (e) {
-        // Image might not exist, ignore error
-        AppLogger.warning('Profile image not found for deletion', e);
+        // Folder might not exist or other deletion issues, log but continue
+        AppLogger.warning('Error deleting user storage folder', e);
       }
       
       AppLogger.info('User account deleted successfully');
@@ -198,6 +269,28 @@ class UserService {
     } catch (e) {
       AppLogger.error('Error deleting user account', e);
       return false;
+    }
+  }
+  
+  // Helper method to recursively delete a folder in Firebase Storage
+  Future<void> _deleteFolder(String path) async {
+    try {
+      ListResult result = await _storage.ref(path).listAll();
+      
+      // Delete all files in this directory
+      for (Reference ref in result.items) {
+        await ref.delete();
+      }
+      
+      // Recursively delete subdirectories
+      for (Reference prefix in result.prefixes) {
+        await _deleteFolder('${prefix.fullPath}');
+      }
+      
+      AppLogger.info('Deleted storage folder: $path');
+    } catch (e) {
+      AppLogger.error('Error deleting storage folder', e);
+      throw e;
     }
   }
 }

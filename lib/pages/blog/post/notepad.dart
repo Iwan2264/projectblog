@@ -28,7 +28,7 @@ class HtmlEditorWidget extends StatelessWidget {
     final keyboardHeight = mediaQuery.viewInsets.bottom;
     
     final dynamicMinHeight = keyboardHeight > 0
-        ? (minHeight * 0.7).clamp(150.0, minHeight)
+        ? (minHeight * 0.5).clamp(150.0, minHeight)
         : minHeight;
         
     return SafeArea(
@@ -44,7 +44,7 @@ class HtmlEditorWidget extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final double defaultHeight = MediaQuery.of(context).size.height * 0.68;
+            final double defaultHeight = MediaQuery.of(context).size.height * 0.675;
             return ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: 150,

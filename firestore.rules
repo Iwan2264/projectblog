@@ -1,41 +1,109 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // User profiles
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if the user is the owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if a blog is published
+    function isPublished(blogData) {
+      return blogData.isDraft == false;
+    }
+    
+    // Users root documents
     match /users/{userId} {
-      // Allow anyone to read user profiles (for blog author info)
+      // Anyone can read the user document
       allow read: if true;
-      // Only the user can write to their own profile
-      allow write: if request.auth != null && request.auth.uid == userId;
+      // Only the user can create/update their own document
+      allow write: if isOwner(userId);
+      
+      // User's profile subcollection
+      match /profile/{document=**} {
+        // Anyone can read profile data
+        allow read: if true;
+        // Only the user can write to their own profile
+        allow write: if isOwner(userId);
+      }
+      
+      // User's blogs subcollection
+      match /blogs/{blogId} {
+        // Allow reading:
+        // - If NOT a draft (published), anyone can read
+        // - If it's a draft, only the author can read
+        allow read: if isPublished(resource.data) || isOwner(userId);
+        
+        // Only the user can write to their own blogs
+        allow write: if isOwner(userId);
+        
+        // Blog comments subcollection
+        match /comments/{commentId} {
+          // Anyone can read comments
+          allow read: if true;
+          
+          // To create a comment:
+          // 1. User must be authenticated
+          // 2. Comment authorId must match the authenticated user's ID
+          allow create: if isAuthenticated() && 
+                          request.resource.data.authorId == request.auth.uid;
+          
+          // Only the comment author can update or delete their comment
+          allow update, delete: if isAuthenticated() && 
+                                  resource.data.authorId == request.auth.uid;
+        }
+      }
     }
-
-    // Blogs (drafts and published)
+    
+    // Global blogs collection (for queries)
     match /blogs/{blogId} {
-      // Allow reading:
-      // - If NOT a draft (published), anyone can read
-      // - If it's a draft, only the author can read
-      allow read: if resource.data.isDraft == false
-                  || (request.auth != null && request.auth.uid == resource.data.authorId);
-
+      // Allow reading published blogs, or drafts by their author
+      allow read: if isPublished(resource.data) || 
+                    (isAuthenticated() && request.auth.uid == resource.data.authorId);
+      
+      // For writes, get the author ID
+      function getAuthorId() {
+        return request.resource.data.authorId;
+      }
+      
       // Allow creating blogs only for authenticated users creating their own post
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-
+      allow create: if isAuthenticated() && getAuthorId() == request.auth.uid;
+      
       // Allow updates or deletes only by the author
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      allow update, delete: if isAuthenticated() && request.auth.uid == resource.data.authorId;
     }
-
-    // Likes (if you have likes as subcollections under blogs)
-    match /blogs/{blogId}/likes/{likeId} {
+    
+    // Username lookup collection
+    match /usernames/{username} {
+      // Anyone can read usernames (to check availability)
       allow read: if true;
-      allow create, delete: if request.auth != null && request.auth.uid == likeId;
+      
+      // Only the owner of the userId can create/update username documents
+      allow create, update: if isAuthenticated() && 
+                              request.resource.data.userId == request.auth.uid;
+                              
+      // Only the owner can delete their username
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
     }
-
-    // Comments
+    
+    // Global comments collection
     match /comments/{commentId} {
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      
+      // To create a comment:
+      // 1. User must be authenticated
+      // 2. Comment authorId must match authenticated user's ID
+      allow create: if isAuthenticated() && 
+                      request.resource.data.authorId == request.auth.uid;
+      
+      // Only the comment author can update or delete their comment
+      allow update, delete: if isAuthenticated() && 
+                              resource.data.authorId == request.auth.uid;
     }
   }
 }
