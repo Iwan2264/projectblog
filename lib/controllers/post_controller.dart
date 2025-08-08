@@ -75,6 +75,11 @@ class BlogPostController extends GetxController {
   }
   
   Future<void> saveDraft() async {
+    // Prevent multiple clicks by checking if already saving
+    if (isSavingDraft.value) {
+      return;
+    }
+
     if (titleController.text.isEmpty && htmlContent.isEmpty) {
       Get.snackbar(
         'Error',
@@ -86,58 +91,57 @@ class BlogPostController extends GetxController {
       return;
     }
     
-    // Ensure authentication is fresh and valid
-    bool isAuthenticated = await _authController.ensureAuthenticated();
-    if (!isAuthenticated) {
-      Get.snackbar(
-        'Authentication Error',
-        'You need to be logged in to save a draft. Please log in again.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-      );
-      return;
-    }
-    
-    // Make sure user data is loaded
-    if (_authController.userModel.value == null) {
-      await _authController.getUserData();
-    }
-    
-    final currentUser = _authController.userModel.value;
-    if (currentUser == null) {
-      Get.snackbar(
-        'Error',
-        'Unable to load user data. Please try logging in again.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-      );
-      return;
-    }
-    
+    // Set saving state immediately to prevent multiple clicks
     isSavingDraft.value = true;
     
     try {
+      // Ensure authentication is fresh and valid
+      bool isAuthenticated = await _authController.ensureAuthenticated();
+      if (!isAuthenticated) {
+        Get.snackbar(
+          'Authentication Error',
+          'You need to be logged in to save a draft. Please log in again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return;
+      }
+      
+      // Make sure user data is loaded
+      if (_authController.userModel.value == null) {
+        await _authController.getUserData();
+      }
+      
+      final currentUser = _authController.userModel.value;
+      if (currentUser == null) {
+        Get.snackbar(
+          'Error',
+          'Unable to load user data. Please try logging in again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return;
+      }
+      
       await editorController.getText().then((content) async {
         htmlContent.value = content;
+        
+        // Determine document ID once and stick with it
+        final String docId = draftId.value.isNotEmpty ? draftId.value : const Uuid().v4();
         
         String? imageURL = imageUrl.value;
         
         // If we have a new image, upload it
         if (mainImage.value != null) {
-          final String blogId = draftId.value.isNotEmpty ? draftId.value : const Uuid().v4();
-          final ref = _storage.ref().child('blog_images').child('$blogId.jpg');
+          final ref = _storage.ref().child('blog_images').child('$docId.jpg');
           final uploadTask = ref.putFile(mainImage.value!);
           final snapshot = await uploadTask;
           imageURL = await snapshot.ref.getDownloadURL();
         }
         
-        // If no draft ID yet, create one
-        final String docId = draftId.value.isNotEmpty ? draftId.value : const Uuid().v4();
-        draftId.value = docId;
-        
-        await _firestore.collection('blogs').doc(docId).set({
+        final draftData = {
           'authorId': currentUser.uid,
           'authorUsername': currentUser.username,
           'authorPhotoURL': currentUser.photoURL,
@@ -148,10 +152,27 @@ class BlogPostController extends GetxController {
           'category': selectedCategory.value,
           'tags': <String>[],
           'isDraft': true,
-          'createdAt': FieldValue.serverTimestamp(),
+          'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
           'updatedAt': FieldValue.serverTimestamp(),
+          'publishedAt': null,
+          'likesCount': 0,
+          'commentsCount': 0,
+          'viewsCount': 0,
+          'featured': false,
+          'likedBy': <String>[],
           'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
-        }, SetOptions(merge: true));
+        };
+        
+        // Save the draft
+        await _firestore.collection('blogs').doc(docId).set(
+          draftData,
+          SetOptions(merge: true),
+        );
+        
+        // Update the draft ID if it was a new draft
+        if (draftId.isEmpty) {
+          draftId.value = docId;
+        }
         
         // Update the image URL
         imageUrl.value = imageURL;
@@ -162,6 +183,7 @@ class BlogPostController extends GetxController {
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green.withOpacity(0.8),
           colorText: Colors.white,
+          duration: const Duration(seconds: 1),
         );
       });
     } catch (e) {
@@ -178,6 +200,11 @@ class BlogPostController extends GetxController {
   }
   
   Future<void> publishPost() async {
+    // Prevent multiple clicks by checking if already publishing
+    if (isPublishing.value) {
+      return;
+    }
+
     if (titleController.text.isEmpty) {
       Get.snackbar(
         'Error',
@@ -200,39 +227,40 @@ class BlogPostController extends GetxController {
       return;
     }
     
-    // Ensure authentication is fresh and valid
-    bool isAuthenticated = await _authController.ensureAuthenticated();
-    if (!isAuthenticated) {
-      Get.snackbar(
-        'Authentication Error',
-        'You need to be logged in to publish a post. Please log in again.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-      );
-      return;
-    }
-    
-    // Make sure user data is loaded
-    if (_authController.userModel.value == null) {
-      await _authController.getUserData();
-    }
-    
-    final currentUser = _authController.userModel.value;
-    if (currentUser == null) {
-      Get.snackbar(
-        'Error',
-        'Unable to load user data. Please try logging in again.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-      );
-      return;
-    }
-    
+    // Set publishing state immediately to prevent multiple clicks
     isPublishing.value = true;
     
     try {
+      // Ensure authentication is fresh and valid
+      bool isAuthenticated = await _authController.ensureAuthenticated();
+      if (!isAuthenticated) {
+        Get.snackbar(
+          'Authentication Error',
+          'You need to be logged in to publish a post. Please log in again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return;
+      }
+      
+      // Make sure user data is loaded
+      if (_authController.userModel.value == null) {
+        await _authController.getUserData();
+      }
+      
+      final currentUser = _authController.userModel.value;
+      if (currentUser == null) {
+        Get.snackbar(
+          'Error',
+          'Unable to load user data. Please try logging in again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return;
+      }
+      
       await editorController.getText().then((content) async {
         htmlContent.value = content;
         
@@ -240,12 +268,43 @@ class BlogPostController extends GetxController {
           throw Exception('Post content cannot be empty');
         }
         
+        // Determine document ID once and stick with it
+        final String docId = draftId.value.isNotEmpty ? draftId.value : const Uuid().v4();
+        
+        // Check if this is already published to prevent duplicates
+        if (draftId.value.isEmpty) {
+          // For new posts, check if we already have a similar recent post by this user
+          final recentPosts = await _firestore
+              .collection('blogs')
+              .where('authorId', isEqualTo: currentUser.uid)
+              .where('title', isEqualTo: titleController.text)
+              .where('isDraft', isEqualTo: false)
+              .orderBy('publishedAt', descending: true)
+              .limit(1)
+              .get();
+              
+          if (recentPosts.docs.isNotEmpty) {
+            final lastPost = recentPosts.docs.first;
+            final lastPublished = (lastPost.data()['publishedAt'] as Timestamp?)?.toDate();
+            if (lastPublished != null && DateTime.now().difference(lastPublished).inMinutes < 5) {
+              Get.snackbar(
+                'Duplicate Post Detected',
+                'You already published a post with this title recently. Please wait a few minutes before publishing again.',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.orange.withOpacity(0.8),
+                colorText: Colors.white,
+                duration: const Duration(seconds: 4),
+              );
+              return;
+            }
+          }
+        }
+        
         String? imageURL = imageUrl.value;
         
         // If we have a new image, upload it
         if (mainImage.value != null) {
-          final String blogId = draftId.value.isNotEmpty ? draftId.value : const Uuid().v4();
-          final ref = _storage.ref().child('blog_images').child('$blogId.jpg');
+          final ref = _storage.ref().child('blog_images').child('$docId.jpg');
           final uploadTask = ref.putFile(mainImage.value!);
           final snapshot = await uploadTask;
           imageURL = await snapshot.ref.getDownloadURL();
@@ -273,8 +332,7 @@ class BlogPostController extends GetxController {
           'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
         };
         
-        // If draft exists, update it, otherwise create a new document
-        final String docId = draftId.value.isNotEmpty ? draftId.value : const Uuid().v4();
+        // Use set with merge to handle both new posts and draft updates
         await _firestore.collection('blogs').doc(docId).set(
           postData,
           SetOptions(merge: true),

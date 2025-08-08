@@ -10,7 +10,7 @@ import 'package:projectblog/pages/blog/post/notepad.dart';
 class CreatePostPage extends StatefulWidget {
   final String? draftId;
   
-  const CreatePostPage({Key? key, this.draftId}) : super(key: key);
+  const CreatePostPage({super.key, this.draftId});
 
   @override
   State<CreatePostPage> createState() => _CreatePostPageState();

@@ -108,6 +108,16 @@ class BlogController extends GetxController {
     }
   }
 
+  /// Load user's published blogs
+  Future<List<BlogPostModel>> loadUserPublishedBlogs(String userId) async {
+    try {
+      return await _blogService.getUserPublishedPosts(userId);
+    } catch (e) {
+      AppLogger.error('Error loading user published blogs', e);
+      return [];
+    }
+  }
+
   /// Search blogs
   Future<List<BlogPostModel>> searchBlogs(String searchTerm) async {
     try {

@@ -9,12 +9,12 @@ class BlogImagePicker extends StatelessWidget {
   final bool isLoading;
 
   const BlogImagePicker({
-    Key? key,
+    super.key,
     required this.mainImage,
     required this.imageUrl,
     required this.onImageSelected,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   Future<void> _selectImage() async {
     final ImagePicker picker = ImagePicker();
