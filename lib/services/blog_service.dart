@@ -250,24 +250,52 @@ class BlogService extends GetxService {
   // Increment post view count
   Future<void> incrementViewCount(String postId) async {
     try {
-      // First update the global blogs collection
-      await _firestore.collection('blogs').doc(postId).update({
-        'viewsCount': FieldValue.increment(1),
-      });
-      
-      // Then find and update the user's copy
+      // First check if the post exists and get the author ID
       DocumentSnapshot globalPostDoc = await _firestore.collection('blogs').doc(postId).get();
-      if (globalPostDoc.exists) {
-        String authorId = (globalPostDoc.data() as Map<String, dynamic>)['authorId'];
-        
-        await _firestore
-            .collection('users')
-            .doc(authorId)
-            .collection('blogs')
-            .doc(postId)
-            .update({
+      if (!globalPostDoc.exists) {
+        print('📝 DEBUG: Post not found in global collection when trying to increment view count');
+        return;
+      }
+      
+      // Create a server timestamp for the update
+      final serverTimestamp = FieldValue.serverTimestamp();
+      final String authorId = (globalPostDoc.data() as Map<String, dynamic>)['authorId'];
+      
+      // Try to use a transaction for atomicity
+      try {
+        await _firestore.runTransaction((transaction) async {
+          // Update the global blogs collection
+          transaction.update(_firestore.collection('blogs').doc(postId), {
+            'viewsCount': FieldValue.increment(1),
+            'lastViewed': serverTimestamp,
+          });
+          
+          // Update the user's copy
+          transaction.update(
+            _firestore.collection('users').doc(authorId).collection('blogs').doc(postId),
+            {
               'viewsCount': FieldValue.increment(1),
-            });
+              'lastViewed': serverTimestamp,
+            }
+          );
+        });
+      } catch (transactionError) {
+        // If the transaction fails (likely due to permission issues), try an alternative approach
+        // This might happen if the viewer is not the author and doesn't have permission to update
+        print('📝 DEBUG: Transaction failed when incrementing view count, using alternative approach');
+        
+        // Create an analytics record instead (which can be processed by a Cloud Function or aggregated later)
+        try {
+          await _firestore.collection('analytics').add({
+            'type': 'view',
+            'postId': postId,
+            'authorId': authorId,
+            'timestamp': serverTimestamp,
+            // Don't include user ID to respect privacy
+          });
+        } catch (analyticsError) {
+          print('📝 DEBUG: Failed to create analytics record: $analyticsError');
+        }
       }
     } catch (e) {
       AppLogger.error('Error incrementing view count', e);
@@ -463,6 +491,62 @@ class BlogService extends GetxService {
     } catch (e) {
       AppLogger.error('Error getting popular posts', e);
       return [];
+    }
+  }
+
+  // Delete a blog post (works for both drafts and published posts)
+  Future<bool> deleteBlogPost(String blogId, String userId) async {
+    try {
+      print('🗑️ DEBUG: Attempting to delete blog with ID: $blogId by user: $userId');
+      
+      // First check that the post exists and belongs to the user
+      DocumentSnapshot blogDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('blogs')
+          .doc(blogId)
+          .get();
+      
+      if (!blogDoc.exists) {
+        print('❌ DEBUG: Blog post not found or user does not have permission');
+        return false;
+      }
+      
+      // Check if it exists in the global blogs collection BEFORE transaction
+      DocumentSnapshot globalBlogDoc = await _firestore.collection('blogs').doc(blogId).get();
+      bool existsInGlobalCollection = globalBlogDoc.exists;
+      
+      print('🔍 DEBUG: Blog exists in global collection: $existsInGlobalCollection');
+      
+      // Execute deletes separately to avoid transaction read/write ordering issues
+      try {
+        // Delete from user's blogs collection
+        await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('blogs')
+          .doc(blogId)
+          .delete();
+        
+        // If it's in the global collection, delete it from there too
+        if (existsInGlobalCollection) {
+          await _firestore
+            .collection('blogs')
+            .doc(blogId)
+            .delete();
+        }
+        
+        print('✅ DEBUG: Blog post deleted successfully');
+        return true;
+      } catch (deleteError) {
+        AppLogger.error('Error during delete operations', deleteError);
+        print('❌ DEBUG: Error in delete operations: $deleteError');
+        return false;
+      }
+    } catch (e) {
+      AppLogger.error('Error deleting blog post', e);
+      print('❌ DEBUG: Error deleting blog: $e');
+      return false;
     }
   }
 }

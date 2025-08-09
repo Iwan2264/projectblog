@@ -7,8 +7,8 @@ import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:projectblog/controllers/auth_controller.dart';
+import 'package:projectblog/controllers/blog_controller.dart';
 import 'package:projectblog/models/blog_post_model.dart';
-import 'package:projectblog/pages/blog/blog_detail_page.dart';
 
 class BlogPostController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -82,7 +82,22 @@ class BlogPostController extends GetxController {
         
         // Wait a bit for the editor to initialize before setting content
         await Future.delayed(const Duration(milliseconds: 500));
-        editorController.setText(htmlContent.value);
+        
+        try {
+          // Add style info in a hidden div at the beginning
+          if (!htmlContent.value.contains('class="editor-styles"')) {
+            const String styleDiv = '<div style="display:none" class="editor-styles">img {max-width: 100%; height: auto; display: block; margin: 0 auto;}</div>';
+            htmlContent.value = styleDiv + htmlContent.value;
+          }
+          
+          // Set the content in the editor
+          editorController.setText(htmlContent.value);
+        } catch (e) {
+          print('⚠️ DEBUG: Error setting HTML content: $e');
+          // Try again after a longer delay
+          await Future.delayed(const Duration(seconds: 1));
+          editorController.setText(htmlContent.value);
+        }
       } else {
         print('⚠️ DEBUG: Draft not found in either collection');
         throw Exception('Draft not found');
@@ -168,18 +183,77 @@ class BlogPostController extends GetxController {
         
         String? imageURL = imageUrl.value;
         
-      // If we have a new image, upload it
+      // If we have a new image, optimize and upload it
       if (mainImage.value != null) {
-        // Use structured path for blog images
-        final ref = _storage.ref()
+        try {
+          // Create a loading indicator
+          Get.snackbar(
+            'Uploading Image',
+            'Please wait while we upload your image...',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.blue.withOpacity(0.8),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2),
+          );
+          
+          // Use structured path for blog images
+          final ref = _storage.ref()
             .child('users')
             .child(currentUser.uid)
             .child('blogs')
             .child(docId)
             .child('main.jpg');
-        final uploadTask = ref.putFile(mainImage.value!);
-        final snapshot = await uploadTask;
-        imageURL = await snapshot.ref.getDownloadURL();
+            
+          // Set metadata for caching
+          final SettableMetadata metadata = SettableMetadata(
+            contentType: 'image/jpeg',
+            customMetadata: {'timestamp': DateTime.now().millisecondsSinceEpoch.toString()},
+            cacheControl: 'public, max-age=86400',
+          );
+            
+          // Upload with metadata and higher quality setting
+          final uploadTask = ref.putFile(mainImage.value!, metadata);
+          
+          // Listen for progress
+          uploadTask.snapshotEvents.listen((event) {
+            final progress = (event.bytesTransferred / event.totalBytes) * 100;
+            print('📤 DEBUG: Upload is $progress% complete');
+          });
+          
+          final snapshot = await uploadTask;
+          imageURL = await snapshot.ref.getDownloadURL();
+          
+          print('📤 DEBUG: Image uploaded successfully');
+        } catch (e) {
+          print('❌ DEBUG: Error uploading image: $e');
+          // Continue anyway with the previous image URL
+        }
+      }
+      
+      // Check content size - Firestore has a 10MB document limit
+      if (htmlContent.value.length > 8000000) { // ~8MB safety limit
+        print('⚠️ DEBUG: Content too large (${htmlContent.value.length} bytes), truncating to avoid Firestore limits');
+        Get.snackbar(
+          'Warning',
+          'Your post is very large. Some content may be truncated when saving.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange.withOpacity(0.8),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        
+        // Truncate content to avoid Firestore limits
+        // Keep first 4MB and last 4MB with message in between
+        const int halfMaxSize = 4000000;
+        final String truncatedContent = 
+            '${htmlContent.value.substring(0, halfMaxSize)}'
+            '<div class="content-truncated-warning" style="text-align:center; padding:20px; margin:20px; '
+            'background-color:#fff3cd; color:#856404; border:1px solid #ffeeba; border-radius:4px;">'
+            '<strong>Warning:</strong> This post exceeds the maximum size limit. Some content in the middle has been automatically truncated when saving.'
+            '</div>'
+            '${htmlContent.value.substring(htmlContent.value.length - halfMaxSize)}';
+            
+        htmlContent.value = truncatedContent;
       }
       
       final draftData = {
@@ -205,16 +279,49 @@ class BlogPostController extends GetxController {
       };
       
       // Debug log the data schema
-      print('📝 DEBUG: Saving draft with data: ${draftData.toString()}');
+      print('📝 DEBUG: Saving draft with data: ${draftData.toString().substring(0, 500)}...'); // Truncate log
       print('📝 DEBUG: isDraft field explicitly set to: ${draftData['isDraft']}');
       
-      // Save the draft to user's blogs collection
-      await _firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('blogs')
-          .doc(docId)
-          .set(draftData, SetOptions(merge: true));        print('✅ DEBUG: Draft saved to Firestore with ID: $docId');
+      try {
+        // Save the draft to user's blogs collection
+        await _firestore
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('blogs')
+            .doc(docId)
+            .set(draftData, SetOptions(merge: true));
+      } catch (e) {
+        if (e.toString().contains('INVALID_ARGUMENT') || e.toString().contains('payload size exceeds')) {
+          print('⚠️ DEBUG: Firestore error - content likely too large, retrying with reduced content');
+          
+          // Further reduce content size
+          const int smallerMaxSize = 2000000; // ~2MB
+          final String furtherTruncatedContent = 
+              '${htmlContent.value.substring(0, smallerMaxSize)}'
+              '<div class="content-truncated-warning" style="text-align:center; padding:20px; margin:20px; '
+              'background-color:#fff3cd; color:#856404; border:1px solid #ffeeba; border-radius:4px;">'
+              '<strong>Warning:</strong> This post significantly exceeds the maximum size limit. A large portion has been automatically truncated when saving.'
+              '</div>'
+              '${htmlContent.value.substring(htmlContent.value.length - smallerMaxSize)}';
+              
+          // Update draft data with reduced content
+          draftData['content'] = furtherTruncatedContent;
+          
+          // Try saving again with reduced content
+          await _firestore
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('blogs')
+              .doc(docId)
+              .set(draftData, SetOptions(merge: true));
+              
+          // Update the htmlContent value so the editor reflects the change
+          htmlContent.value = furtherTruncatedContent;
+        } else {
+          // If it's not a size-related error, rethrow
+          throw e;
+        }
+      }        print('✅ DEBUG: Draft saved to Firestore with ID: $docId');
         
         // Update the draft ID if it was a new draft
         if (draftId.isEmpty) {
@@ -223,7 +330,16 @@ class BlogPostController extends GetxController {
         }
         
         // Update the image URL
-        imageUrl.value = imageURL;
+        imageUrl.value = imageURL ?? '';
+        
+        // Refresh drafts cache
+        try {
+          print('📝 DEBUG: Refreshing drafts cache after saving draft');
+          final blogController = Get.find<BlogController>();
+          blogController.refreshDrafts(currentUser.uid);
+        } catch (e) {
+          print('⚠️ DEBUG: Error refreshing drafts cache: $e');
+        }
         
         Get.snackbar(
           'Success',
@@ -376,6 +492,32 @@ class BlogPostController extends GetxController {
         imageURL = await snapshot.ref.getDownloadURL();
       }
       
+      // Check content size - Firestore has a 10MB document limit
+      if (htmlContent.value.length > 8000000) { // ~8MB safety limit
+        print('⚠️ DEBUG: Content too large (${htmlContent.value.length} bytes), truncating to avoid Firestore limits');
+        Get.snackbar(
+          'Warning',
+          'Your post is very large. Some content may be truncated when publishing.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange.withOpacity(0.8),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        
+        // Truncate content to avoid Firestore limits
+        // Keep first 4MB and last 4MB with message in between
+        const int halfMaxSize = 4000000;
+        final String truncatedContent = 
+            '${htmlContent.value.substring(0, halfMaxSize)}'
+            '<div class="content-truncated-warning" style="text-align:center; padding:20px; margin:20px; '
+            'background-color:#fff3cd; color:#856404; border:1px solid #ffeeba; border-radius:4px;">'
+            '<strong>Warning:</strong> This post exceeds the maximum size limit. Some content in the middle has been automatically truncated when publishing.'
+            '</div>'
+            '${htmlContent.value.substring(htmlContent.value.length - halfMaxSize)}';
+            
+        htmlContent.value = truncatedContent;
+      }
+      
       final postData = {
         'authorId': currentUser.uid,
         'authorUsername': currentUser.username,
@@ -398,22 +540,83 @@ class BlogPostController extends GetxController {
         'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
       };
       
-      // Use transaction to save to both user's collection and global blogs collection
-      await _firestore.runTransaction((transaction) async {
-        // Save to user's blogs collection
-        transaction.set(
-          _firestore.collection('users').doc(currentUser.uid).collection('blogs').doc(docId),
-          postData,
-          SetOptions(merge: true)
-        );
+      try {
+        // Use transaction to save to both user's collection and global blogs collection
+        await _firestore.runTransaction((transaction) async {
+          // Save to user's blogs collection
+          transaction.set(
+            _firestore.collection('users').doc(currentUser.uid).collection('blogs').doc(docId),
+            postData,
+            SetOptions(merge: true)
+          );
+          
+          // Also save to global blogs collection for easier querying
+          transaction.set(
+            _firestore.collection('blogs').doc(docId),
+            postData,
+            SetOptions(merge: true)
+          );
+        });
+      } catch (e) {
+        if (e.toString().contains('INVALID_ARGUMENT') || e.toString().contains('payload size exceeds')) {
+          print('⚠️ DEBUG: Firestore error - content likely too large, retrying with reduced content');
+          
+          Get.snackbar(
+            'Content Size Issue',
+            'Your post is too large to publish as-is. Content will be truncated to fit Firestore limits.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange.withOpacity(0.8),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 4),
+          );
+          
+          // Further reduce content size
+          const int smallerMaxSize = 2000000; // ~2MB
+          final String furtherTruncatedContent = 
+              '${htmlContent.value.substring(0, smallerMaxSize)}'
+              '<div class="content-truncated-warning" style="text-align:center; padding:20px; margin:20px; '
+              'background-color:#fff3cd; color:#856404; border:1px solid #ffeeba; border-radius:4px;">'
+              '<strong>Warning:</strong> This post significantly exceeds the maximum size limit. A large portion has been automatically truncated when publishing.'
+              '</div>'
+              '${htmlContent.value.substring(htmlContent.value.length - smallerMaxSize)}';
+              
+          // Update post data with reduced content
+          postData['content'] = furtherTruncatedContent;
+          
+          // Try saving again with reduced content
+          await _firestore.runTransaction((transaction) async {
+            // Save to user's blogs collection
+            transaction.set(
+              _firestore.collection('users').doc(currentUser.uid).collection('blogs').doc(docId),
+              postData,
+              SetOptions(merge: true)
+            );
+            
+            // Also save to global blogs collection for easier querying
+            transaction.set(
+              _firestore.collection('blogs').doc(docId),
+              postData,
+              SetOptions(merge: true)
+            );
+          });
+          
+          // Update the htmlContent value so the editor reflects the change
+          htmlContent.value = furtherTruncatedContent;
+        } else {
+          // If it's not a size-related error, rethrow
+          throw e;
+        }
+      }        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
         
-        // Also save to global blogs collection for easier querying
-        transaction.set(
-          _firestore.collection('blogs').doc(docId),
-          postData,
-          SetOptions(merge: true)
-        );
-      });        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
+        // Refresh both drafts and published posts caches
+        try {
+          print('📝 DEBUG: Refreshing caches after publishing');
+          final blogController = Get.find<BlogController>();
+          blogController.refreshDrafts(currentUser.uid);
+          blogController.refreshPublishedPosts(currentUser.uid);
+        } catch (e) {
+          print('⚠️ DEBUG: Error refreshing caches: $e');
+        }
         
         // Show success message
         Get.snackbar(
@@ -425,23 +628,15 @@ class BlogPostController extends GetxController {
           duration: const Duration(seconds: 2),
         );
         
-        // Navigate to the blog detail page after a short delay
+        // Navigate to home page after a short delay
         Future.delayed(const Duration(milliseconds: 1500), () {
           // First close the create post page
           Get.back(); 
           
-          print('🚀 DEBUG: Navigating to blog detail page with ID: $docId');
+          print('🚀 DEBUG: Navigating to home page after publishing');
           
-          // Use dynamic routing to the blog detail page
-          // The route should match what's defined in main.dart
-          try {
-            // First try named route
-            Get.toNamed('/blog/detail/$docId');
-          } catch (e) {
-            print('⚠️ DEBUG: Error using named route: $e');
-            // Fall back to direct navigation if named route fails
-            Get.to(() => BlogDetailPage(blogId: docId));
-          }
+          // Navigate to home page
+          Get.offAllNamed('/home');
         });
       });
     } catch (e) {
@@ -532,6 +727,15 @@ class BlogPostController extends GetxController {
             });
       } catch (e) {
         print('Error deleting blog images: $e');
+      }
+      
+      // Refresh drafts cache after deletion
+      try {
+        print('📝 DEBUG: Refreshing drafts cache after deletion');
+        final blogController = Get.find<BlogController>();
+        blogController.refreshDrafts(currentUser.uid);
+      } catch (e) {
+        print('⚠️ DEBUG: Error refreshing drafts cache: $e');
       }
       
       Get.snackbar(

@@ -192,33 +192,68 @@ class _CreatePostPageState extends State<CreatePostPage> {
       return Future.value(true);
     }
     
+    // Store navigator reference to avoid deactivated widget issues
+    final navigator = Navigator.of(context);
+    
     return showDialog<bool>(
       context: context,
-      builder: (context) {
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Save Draft?'),
           content: const Text('Do you want to save the draft before exiting?'),
           actions: [
             TextButton(
               onPressed: () {
-                // Exit without saving
-                Navigator.of(context).pop(true);
+                // Exit without saving - use the dialog's context
+                Navigator.of(dialogContext).pop(true);
               },
               child: const Text('Exit Without Saving'),
             ),
             TextButton(
               onPressed: () {
+                // Capture the navigator context before doing the async operation
+                final localNavigator = Navigator.of(dialogContext);
+                
+                // Show progress indicator
+                showDialog(
+                  context: dialogContext,
+                  barrierDismissible: false,
+                  builder: (loadingContext) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+                
                 // Save and exit
                 _controller.saveDraft().then((_) {
-                  Navigator.of(context).pop(true);
+                  // First pop the loading dialog
+                  if (navigator.mounted) {
+                    try {
+                      localNavigator.pop();
+                      // Then pop the confirmation dialog with result
+                      localNavigator.pop(true);
+                    } catch (e) {
+                      print('Navigation error (non-critical): $e');
+                    }
+                  }
+                }).catchError((e) {
+                  // On error, pop loading dialog and show error
+                  if (navigator.mounted) {
+                    try {
+                      localNavigator.pop();
+                      localNavigator.pop(false);
+                    } catch (e) {
+                      print('Navigation error (non-critical): $e');
+                    }
+                  }
                 });
               },
               child: const Text('Save & Exit'),
             ),
             TextButton(
               onPressed: () {
-                // Cancel and return to editing
-                Navigator.of(context).pop(false);
+                // Cancel and return to editing - use the dialog's context
+                Navigator.of(dialogContext).pop(false);
               },
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).primaryColor,

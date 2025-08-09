@@ -449,16 +449,93 @@ class AuthController extends GetxController {
         return false;
       }
       
-      // Refresh the token to ensure it's still valid
-      await user.getIdToken(true);
+      try {
+        // Refresh the token to ensure it's still valid
+        await user.getIdToken(true);
+      } catch (tokenError) {
+        // Log but don't fail completely if token refresh fails
+        AppLogger.warning('Token refresh failed but continuing: $tokenError');
+      }
       
-      // Check if email is verified for email/password users
+      // Always check for user document in Firestore
+      try {
+        // Get the user document
+        DocumentSnapshot userDoc = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        
+        if (userDoc.exists) {
+          // Update local model with latest data
+          userModel.value = UserModel.fromMap(userDoc.data() as Map<String, dynamic>);
+          _cacheUserData(userModel.value!);
+          
+          // Update the last login time in Firestore asynchronously
+          _firestore
+            .collection('users')
+            .doc(user.uid)
+            .update({
+              'lastLoginAt': FieldValue.serverTimestamp(),
+            });
+        } else {
+          // No document in Firestore - create one with basic info
+          print('👤 DEBUG: Creating basic user data for ${user.uid}');
+          String username = user.email?.split('@')[0] ?? 'user_${user.uid.substring(0, 5)}';
+          // Add random numbers to username to avoid conflicts for alt accounts
+          if (username.length < 5) {
+            username = '${username}_${DateTime.now().millisecondsSinceEpoch % 10000}';
+          }
+          
+          UserModel defaultUser = UserModel(
+            uid: user.uid,
+            email: user.email ?? '',
+            username: username,
+            name: user.displayName ?? username,
+            photoURL: user.photoURL,
+            createdAt: DateTime.now(),
+            lastLoginAt: DateTime.now(),
+            // Add more default fields as needed
+          );
+          
+          // Create a proper document for this user
+          await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .set(defaultUser.toMap());
+          
+          userModel.value = defaultUser;
+          _cacheUserData(defaultUser);
+          print('👤 DEBUG: Created basic user data with username: $username');
+        }
+      } catch (firestoreError) {
+        // If Firestore fails, try to fall back to cached data
+        AppLogger.error('Failed to get/create user data in Firestore', firestoreError);
+        
+        // If we don't have cached data either, create a temporary user model
+        if (userModel.value == null) {
+          String username = user.email?.split('@')[0] ?? 'user_${user.uid.substring(0, 5)}';
+          userModel.value = UserModel(
+            uid: user.uid,
+            email: user.email ?? '',
+            username: username,
+            name: user.displayName ?? username,
+            photoURL: user.photoURL,
+            createdAt: DateTime.now(),
+            lastLoginAt: DateTime.now(),
+          );
+        }
+      }
+      
+      // Email verification check - temporarily disabled
+      // If you want to enforce email verification, uncomment this code:
+      /*
       if (user.providerData.any((element) => element.providerId == 'password') && 
           !user.emailVerified) {
         AppLogger.warning('User email not verified');
         Get.offAllNamed('/verify-email');
         return false;
       }
+      */
       
       return true;
     } catch (e) {

@@ -105,5 +105,11 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && 
                               resource.data.authorId == request.auth.uid;
     }
+    
+    // Analytics collection - allow creation by anyone
+    match /analytics/{docId} {
+      allow read: if false;  // No one can read individual analytics records (use aggregation instead)
+      allow create: if true; // Allow anonymous analytics creation
+    }
   }
 }

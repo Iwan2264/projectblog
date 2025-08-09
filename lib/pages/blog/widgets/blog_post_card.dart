@@ -11,10 +11,10 @@ class BlogPostCard extends StatelessWidget {
   final bool showAuthor;
 
   const BlogPostCard({
-    Key? key, 
+    super.key, 
     required this.blog,
     this.showAuthor = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -207,8 +207,18 @@ class BlogPostCard extends StatelessWidget {
   }
 
   String _getContentPreview(String content) {
-    // Remove HTML tags for preview
-    String plainText = content.replaceAll(RegExp(r'<[^>]*>'), '');
+    // Remove HTML tags for preview including style blocks
+    String plainText = content
+      .replaceAll(RegExp(r'<style[^>]*>.*?</style>', dotAll: true), '') // Remove style blocks
+      .replaceAll(RegExp(r'<div\s+class="editor-styles".*?</div>', dotAll: true), '') // Remove editor styles div
+      .replaceAll(RegExp(r'<[^>]*>'), '') // Remove remaining HTML tags
+      .replaceAll('&nbsp;', ' ') // Convert non-breaking spaces to regular spaces
+      .replaceAll('&amp;', '&') // Convert HTML entities
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>');
+      
+    // Trim whitespace and check length
+    plainText = plainText.trim();
     if (plainText.length > 150) {
       return '${plainText.substring(0, 150)}...';
     }

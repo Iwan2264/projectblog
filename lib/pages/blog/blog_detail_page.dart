@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_html/flutter_html.dart';
 
 import '../../models/blog_post_model.dart';
 import '../../models/user_model.dart';
@@ -157,6 +158,13 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
               // Implement share functionality
             },
           ),
+          // Show delete button only if current user is the author
+          if (_blogController.isCurrentUserAuthor(blog!))
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _deleteBlog,
+              tooltip: "Delete blog",
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -262,16 +270,63 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
                 ),
               ),
             
-            // Content - Simple rendering of blog content
-            // In a real app, you'd use a proper HTML renderer like flutter_html
+            // Content - Render HTML content with flutter_html
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Text(
-                _stripHtmlTags(blog!.content),
-                style: const TextStyle(
-                  fontSize: 16,
-                  height: 1.6,
-                ),
+              child: Column(
+                children: [
+                  // Actual HTML content
+                  Html(
+                    data: _cleanHtmlContent(blog!.content),
+                    style: {
+                      "body": Style(
+                        fontSize: FontSize(16.0),
+                        lineHeight: LineHeight(1.6),
+                        fontFamily: 'Roboto',
+                        padding: HtmlPaddings.zero,
+                        margin: Margins.zero,
+                      ),
+                      "p": Style(
+                        margin: Margins.only(bottom: 16, top: 0),
+                        fontSize: FontSize(16.0),
+                      ),
+                      "h1": Style(
+                        fontSize: FontSize(24.0),
+                        fontWeight: FontWeight.bold,
+                        margin: Margins.only(bottom: 16, top: 24),
+                      ),
+                      "h2": Style(
+                        fontSize: FontSize(22.0),
+                        fontWeight: FontWeight.bold,
+                        margin: Margins.only(bottom: 14, top: 22),
+                      ),
+                      "h3": Style(
+                        fontSize: FontSize(20.0),
+                        fontWeight: FontWeight.bold,
+                        margin: Margins.only(bottom: 12, top: 20),
+                      ),
+                      "img": Style(
+                        width: Width(MediaQuery.of(context).size.width * 0.9),
+                        alignment: Alignment.center,
+                        margin: Margins.only(top: 16, bottom: 16),
+                      ),
+                      // Hide any editor-styles divs
+                      "div.editor-styles": Style(
+                        display: Display.none,
+                      ),
+                      "ul": Style(
+                        margin: Margins.only(bottom: 16, top: 16, left: 16),
+                      ),
+                      "ol": Style(
+                        margin: Margins.only(bottom: 16, top: 16, left: 16),
+                      ),
+                    },
+                    onLinkTap: (url, _, __) {
+                      // Handle link tapping here if needed
+                      print('Tapped on URL: $url');
+                    },
+                  ),
+                ],
               ),
             ),
             
@@ -429,14 +484,81 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
   
-  // Helper method to strip HTML tags from content
-  String _stripHtmlTags(String htmlString) {
-    // This is a simple approach for display purposes
-    // A proper HTML renderer would be better for a production app
-    return htmlString.replaceAll(RegExp(r'<[^>]*>'), '')
-                    .replaceAll('&nbsp;', ' ')
-                    .replaceAll('&amp;', '&')
-                    .replaceAll('&lt;', '<')
-                    .replaceAll('&gt;', '>');
+  // Clean HTML content by removing style tags and editor-styles divs
+  String _cleanHtmlContent(String content) {
+    print('🔍 DEBUG: Original Blog Content: $content');
+    
+    if (content.isEmpty) {
+      return '<p>No content available for this blog post.</p>';
+    }
+    
+    // Check if the content is ONLY styling without actual content
+    bool isOnlyStyling = content.trim().startsWith('<div style="display:none" class="editor-styles">') && 
+                         !content.contains('</div>') && 
+                         !content.contains('<p>') && 
+                         !content.contains('<img');
+                         
+    if (isOnlyStyling) {
+      print('🔍 DEBUG: Content contains only styling, adding placeholder text');
+      content += '<p>This blog post has no content yet.</p>';
+    }
+    
+    // Remove style blocks that might be showing
+    content = content.replaceAll(RegExp(r'<style[^>]*>.*?</style>', dotAll: true), '');
+    
+    // Remove the editor-styles div that contains styling, but only if it's marked as display:none
+    content = content.replaceAll(RegExp(r'<div\s+style="display:none"\s+class="editor-styles".*?</div>', dotAll: true), '');
+    content = content.replaceAll(RegExp(r'<div\s+class="editor-styles".*?</div>', dotAll: true), '');
+    
+    // Add default styling for all content - this will ensure images display properly
+    content = '''
+    <style>
+      img {max-width: 100% !important; height: auto !important; display: block !important; margin: 0 auto !important;}
+      p {margin-bottom: 16px; line-height: 1.6;}
+      h1, h2, h3, h4, h5, h6 {margin-top: 24px; margin-bottom: 16px;}
+    </style>
+    $content
+    ''';
+    
+    // After cleanup, check if there's no visible content
+    String visibleContent = content
+        .replaceAll(RegExp(r'<style[^>]*>.*?</style>', dotAll: true), '')
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .trim();
+        
+    if (visibleContent.isEmpty) {
+      content = '''
+      <style>
+        img {max-width: 100%; height: auto; display: block; margin: 0 auto;}
+        p {margin-bottom: 16px; line-height: 1.6;}
+      </style>
+      <p>This blog post doesn't have any content yet.</p>
+      ''';
+    }
+    
+    print('🔍 DEBUG: Cleaned Blog Content: $content');
+    
+    return content;
+  }
+  
+  void _deleteBlog() async {
+    if (blog == null) return;
+    
+    // Use the BlogController to delete the post
+    final success = await _blogController.deleteBlogPost(blog!.id);
+    
+    if (success) {
+      // Navigate back after successful deletion
+      Get.back();
+      
+      // Show success message
+      Get.snackbar(
+        'Success',
+        'Blog post deleted successfully',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+    }
   }
 }

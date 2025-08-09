@@ -46,11 +46,61 @@ class BlogController extends GetxController {
     'Sports & Gaming'
   ].obs;
 
+  // Flag to track if initial data has been loaded
+  final hasLoadedInitialData = false.obs;
+  
   @override
   void onInit() {
     super.onInit();
-    loadRecentBlogs();
-    loadFeaturedBlogs();
+    // Load data immediately
+    loadInitialData();
+    
+    // Set up automatic refresh every 60 seconds for when app is running
+    ever(_authController.firebaseUser, (_) {
+      if (_authController.firebaseUser.value != null) {
+        loadUserData(_authController.firebaseUser.value!.uid);
+      }
+    });
+  }
+  
+  // Load all initial data
+  Future<void> loadInitialData() async {
+    if (hasLoadedInitialData.value) return;
+    
+    try {
+      isLoading.value = true;
+      
+      // Get current user
+      final user = _authController.firebaseUser.value;
+      
+      // Load all data in parallel
+      await Future.wait([
+        loadRecentBlogs(),
+        loadFeaturedBlogs(),
+        if (user != null) loadUserData(user.uid),
+      ]);
+      
+      hasLoadedInitialData.value = true;
+    } catch (e) {
+      AppLogger.error('Error loading initial data', e);
+    } finally {
+      isLoading.value = false;
+    }
+  }
+  
+  // Load all user-specific data
+  Future<void> loadUserData(String userId) async {
+    try {
+      // Load user's blogs in parallel
+      await Future.wait([
+        loadUserBlogs(userId),
+        // Pre-fetch drafts and published posts and store them
+        _preloadUserDrafts(userId),
+        _preloadUserPublishedPosts(userId),
+      ]);
+    } catch (e) {
+      AppLogger.error('Error loading user data', e);
+    }
   }
 
   @override
@@ -100,23 +150,123 @@ class BlogController extends GetxController {
     }
   }
 
-  /// Load user's drafts
+  // Cached user drafts
+  final RxList<BlogPostModel> userDrafts = <BlogPostModel>[].obs;
+  
+  // Preload and cache user drafts
+  Future<void> _preloadUserDrafts(String userId) async {
+    try {
+      print('📝 DEBUG: Preloading drafts for user $userId');
+      final drafts = await _blogService.getUserDrafts(userId);
+      
+      // Sort drafts by date (newest first)
+      drafts.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      
+      // Store in cache
+      userDrafts.value = drafts;
+      print('📝 DEBUG: Cached ${drafts.length} drafts');
+    } catch (e) {
+      AppLogger.error('Error preloading user drafts', e);
+    }
+  }
+
+  /// Load user's drafts - uses cache if available
   Future<List<BlogPostModel>> loadUserDrafts(String userId) async {
     try {
-      return await _blogService.getUserDrafts(userId);
+      // If cache is empty, load from service
+      if (userDrafts.isEmpty) {
+        print('📝 DEBUG: Cache miss for drafts, loading from service');
+        final drafts = await _blogService.getUserDrafts(userId);
+        
+        // Sort drafts by date (newest first)
+        drafts.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        
+        // Store in cache
+        userDrafts.value = drafts;
+        return drafts;
+      } else {
+        print('📝 DEBUG: Using cached drafts (${userDrafts.length})');
+        return userDrafts;
+      }
     } catch (e) {
       AppLogger.error('Error loading user drafts', e);
       return [];
     }
   }
+  
+  /// Refresh drafts cache
+  Future<void> refreshDrafts(String userId) async {
+    try {
+      print('📝 DEBUG: Refreshing drafts for user $userId');
+      final drafts = await _blogService.getUserDrafts(userId);
+      
+      // Sort drafts by date (newest first)
+      drafts.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      
+      // Update cache
+      userDrafts.value = drafts;
+    } catch (e) {
+      AppLogger.error('Error refreshing drafts', e);
+    }
+  }
 
-  /// Load user's published blogs
+  // Cached user published posts
+  final RxList<BlogPostModel> userPublishedPosts = <BlogPostModel>[].obs;
+  
+  // Preload and cache user published posts
+  Future<void> _preloadUserPublishedPosts(String userId) async {
+    try {
+      print('📝 DEBUG: Preloading published posts for user $userId');
+      final posts = await _blogService.getUserPublishedPosts(userId);
+      
+      // Sort posts by date (newest first)
+      posts.sort((a, b) => (b.publishedAt ?? b.updatedAt).compareTo(a.publishedAt ?? a.updatedAt));
+      
+      // Store in cache
+      userPublishedPosts.value = posts;
+      print('📝 DEBUG: Cached ${posts.length} published posts');
+    } catch (e) {
+      AppLogger.error('Error preloading user published posts', e);
+    }
+  }
+
+  /// Load user's published blogs - uses cache if available
   Future<List<BlogPostModel>> loadUserPublishedBlogs(String userId) async {
     try {
-      return await _blogService.getUserPublishedPosts(userId);
+      // If cache is empty, load from service
+      if (userPublishedPosts.isEmpty) {
+        print('📝 DEBUG: Cache miss for published posts, loading from service');
+        final posts = await _blogService.getUserPublishedPosts(userId);
+        
+        // Sort posts by date (newest first)
+        posts.sort((a, b) => (b.publishedAt ?? b.updatedAt).compareTo(a.publishedAt ?? a.updatedAt));
+        
+        // Store in cache
+        userPublishedPosts.value = posts;
+        return posts;
+      } else {
+        print('📝 DEBUG: Using cached published posts (${userPublishedPosts.length})');
+        return userPublishedPosts;
+      }
     } catch (e) {
       AppLogger.error('Error loading user published blogs', e);
       return [];
+    }
+  }
+  
+  /// Refresh published posts cache
+  Future<void> refreshPublishedPosts(String userId) async {
+    try {
+      print('📝 DEBUG: Refreshing published posts for user $userId');
+      final posts = await _blogService.getUserPublishedPosts(userId);
+      
+      // Sort posts by date (newest first)
+      posts.sort((a, b) => (b.publishedAt ?? b.updatedAt).compareTo(a.publishedAt ?? a.updatedAt));
+      
+      // Update cache
+      userPublishedPosts.value = posts;
+    } catch (e) {
+      AppLogger.error('Error refreshing published posts', e);
     }
   }
 
@@ -196,8 +346,14 @@ class BlogController extends GetxController {
   /// Increment blog views
   Future<void> viewBlog(String blogId) async {
     try {
-      await _blogService.incrementViewCount(blogId);
+      // Don't wait for the result since this is a non-critical operation
+      // This will avoid blocking the UI while analytics are being processed
+      _blogService.incrementViewCount(blogId).catchError((error) {
+        // Log but don't show to user as it's non-critical
+        print('📝 DEBUG: Non-critical view count error: $error');
+      });
     } catch (e) {
+      // This catch block will rarely be hit since we're using catchError above
       AppLogger.warning('Error incrementing blog views (non-critical)', e);
     }
   }
@@ -282,6 +438,119 @@ class BlogController extends GetxController {
   bool hasCurrentUserLiked(BlogPostModel blog) {
     UserModel? currentUser = _authController.userModel.value;
     return currentUser != null && blog.likedBy.contains(currentUser.uid);
+  }
+  
+  /// Delete a blog post
+  Future<bool> deleteBlogPost(String blogId) async {
+    try {
+      // Ensure authentication is valid
+      bool isAuthenticated = await _authController.ensureAuthenticated();
+      if (!isAuthenticated) {
+        Get.snackbar(
+          'Authentication Error',
+          'You need to be logged in to delete posts',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return false;
+      }
+      
+      final currentUser = _authController.userModel.value;
+      if (currentUser == null) {
+        Get.snackbar(
+          'Error',
+          'Unable to verify your identity',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return false;
+      }
+      
+      // First get the blog post to verify ownership
+      final blog = await getBlogPost(blogId);
+      if (blog == null) {
+        Get.snackbar(
+          'Error',
+          'Blog post not found',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return false;
+      }
+      
+      // Verify that the current user is the author
+      if (blog.authorId != currentUser.uid) {
+        Get.snackbar(
+          'Permission Denied',
+          'You can only delete your own posts',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return false;
+      }
+      
+      // Show confirmation dialog
+      final bool confirm = await Get.dialog<bool>(
+        AlertDialog(
+          title: const Text('Delete Post'),
+          content: const Text('Are you sure you want to delete this post? This action cannot be undone.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Get.back(result: false),
+              child: const Text('CANCEL'),
+            ),
+            TextButton(
+              onPressed: () => Get.back(result: true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('DELETE'),
+            ),
+          ],
+        ),
+      ) ?? false;
+      
+      if (!confirm) return false;
+      
+      // Delete the blog post
+      final success = await _blogService.deleteBlogPost(blogId, currentUser.uid);
+      
+      if (success) {
+        // Refresh the caches
+        refreshDrafts(currentUser.uid);
+        refreshPublishedPosts(currentUser.uid);
+        
+        Get.snackbar(
+          'Success',
+          'Post deleted successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to delete post',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return false;
+      }
+    } catch (e) {
+      AppLogger.error('Error deleting blog post', e);
+      Get.snackbar(
+        'Error',
+        'An error occurred while deleting the post',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return false;
+    }
   }
 
   /// Get user by ID

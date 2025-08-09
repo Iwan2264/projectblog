@@ -18,7 +18,6 @@ class _DraftsGridState extends State<DraftsGrid> {
   final BlogController _blogController = Get.find<BlogController>();
   final AuthController _authController = Get.find<AuthController>();
   
-  List<BlogPostModel> _drafts = [];
   bool _isLoading = true;
 
   @override
@@ -33,11 +32,13 @@ class _DraftsGridState extends State<DraftsGrid> {
     final currentUser = _authController.userModel.value;
     if (currentUser != null) {
       print('📝 DEBUG: Loading drafts for user ID: ${currentUser.uid}');
-      final drafts = await _blogController.loadUserDrafts(currentUser.uid);
-      print('📝 DEBUG: Loaded ${drafts.length} drafts');
+      
+      // If the cache is empty, this will load from Firestore
+      // Otherwise, it will use the cache
+      await _blogController.loadUserDrafts(currentUser.uid);
+      print('📝 DEBUG: Loaded ${_blogController.userDrafts.length} drafts');
       
       setState(() {
-        _drafts = drafts;
         _isLoading = false;
       });
     } else {
@@ -54,55 +55,59 @@ class _DraftsGridState extends State<DraftsGrid> {
       );
     }
 
-    if (_drafts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.drafts_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "You have no saved drafts.",
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
+    return Obx(() {
+      final drafts = _blogController.userDrafts;
+      
+      if (drafts.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.drafts_outlined,
+                size: 64,
+                color: Colors.grey[400],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Start writing to save your first draft!",
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
+              const SizedBox(height: 16),
+              Text(
+                "You have no saved drafts.",
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                "Start writing to save your first draft!",
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return RefreshIndicator(
+        onRefresh: _loadDrafts,
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const AlwaysScrollableScrollPhysics(),
+          itemCount: drafts.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.75,
+          ),
+          itemBuilder: (context, index) {
+            final draft = drafts[index];
+            return _buildDraftCard(draft);
+          },
         ),
       );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadDrafts,
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: _drafts.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.75,
-        ),
-        itemBuilder: (context, index) {
-          final draft = _drafts[index];
-          return _buildDraftCard(draft);
-        },
-      ),
-    );
+    });
   }
 
   Widget _buildDraftCard(BlogPostModel draft) {

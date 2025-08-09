@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
+import 'package:file_picker/file_picker.dart'; // For PlatformFile
 
 class HtmlEditorWidget extends StatelessWidget {
   final HtmlEditorController controller;
@@ -62,7 +63,7 @@ class HtmlEditorWidget extends StatelessWidget {
                         darkMode: theme.brightness == Brightness.dark,
                         autoAdjustHeight: true, // Enable auto-adjustment of height
                         adjustHeightForKeyboard: true, // Allow height adjustment with keyboard
-                        initialText: "<style>img {max-width: 50%; height: auto; display: block; margin: 0 auto;}</style>", // Restrict image size to 50% and center align
+                        // Don't set initialText here as it can cause issues with loading drafts
                       ),
                       htmlToolbarOptions: HtmlToolbarOptions(
                         toolbarType: ToolbarType.nativeScrollable,
@@ -99,6 +100,20 @@ class HtmlEditorWidget extends StatelessWidget {
                             redo: true,
                           ),
                         ],
+                        // Fix image upload settings
+                        mediaUploadInterceptor: (PlatformFile file, InsertFileType type) async {
+                          print('🖼️ DEBUG: File picked: ${file.name} (${file.size} bytes)');
+                          if (type == InsertFileType.image) {
+                            // Return true to allow the default behavior 
+                            // (using data URLs for images)
+                            return true;
+                          }
+                          return false;
+                        },
+                        mediaLinkInsertInterceptor: (String url, InsertFileType type) {
+                          print('🔗 DEBUG: URL inserted: $url');
+                          return true; // Allow the URL to be inserted
+                        },
                         toolbarPosition: ToolbarPosition.belowEditor,
                         toolbarItemHeight: 30,
                         buttonColor: theme.colorScheme.primary,
