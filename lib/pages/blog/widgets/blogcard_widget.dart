@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:projectblog/models/blog_model.dart';
+import 'package:projectblog/models/blog_post_model.dart';
 import 'package:projectblog/pages/blog/reader_page.dart';
+import 'package:projectblog/widgets/cached_network_image.dart';
 
 class BlogCard extends StatelessWidget {
-  final BlogModel blog;
+  final BlogPostModel blog;
   const BlogCard({super.key, required this.blog});
 
   @override
@@ -31,13 +32,13 @@ class BlogCard extends StatelessWidget {
                         topLeft: Radius.circular(6),
                         topRight: Radius.circular(6),
                       ),
-                      child: Image.network(
-                        blog.imageURL!,
+                      child: CachedImage(
+                        imageUrl: blog.imageURL,
                         height: 200,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const SizedBox(height: 200, child: Icon(Icons.image_not_supported)),
+                        maxCacheHeight: 400,
+                        maxCacheWidth: 600,
                       ),
                     )
                   : const SizedBox.shrink(),
@@ -65,9 +66,10 @@ class BlogCard extends StatelessWidget {
                     Row(
                       children: [
                         if (blog.authorPhotoURL != null)
-                          CircleAvatar(
+                          CachedAvatar(
+                            imageUrl: blog.authorPhotoURL,
                             radius: 15,
-                            backgroundImage: NetworkImage(blog.authorPhotoURL!),
+                            name: blog.authorUsername,
                           ),
                         const SizedBox(width: 8),
                         Text(
@@ -78,7 +80,7 @@ class BlogCard extends StatelessWidget {
                         ),
                         const Spacer(),
                         Text(
-                          '${blog.readingTimeMinutes} min read',
+                          '${blog.readTime.toInt()} min read',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                           ),

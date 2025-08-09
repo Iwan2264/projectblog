@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:projectblog/models/blog_model.dart';
+import 'package:projectblog/models/blog_post_model.dart';
+import 'package:projectblog/widgets/cached_network_image.dart';
 
 class BlogReaderPage extends StatelessWidget {
-  final BlogModel blog;
+  final BlogPostModel blog;
   const BlogReaderPage({super.key, required this.blog});
 
   @override
@@ -25,9 +26,11 @@ class BlogReaderPage extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (blog.imageURL != null)
-                    Image.network(
-                      blog.imageURL!,
+                    CachedImage(
+                      imageUrl: blog.imageURL!,
                       fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
                     ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
@@ -54,9 +57,10 @@ class BlogReaderPage extends StatelessWidget {
                   Row(
                     children: [
                       if (blog.authorPhotoURL != null)
-                        CircleAvatar(
+                        CachedAvatar(
+                          imageUrl: blog.authorPhotoURL!,
                           radius: 22,
-                          backgroundImage: NetworkImage(blog.authorPhotoURL!),
+                          name: blog.authorUsername,
                         ),
                       const SizedBox(width: 12),
                       Column(
@@ -70,7 +74,7 @@ class BlogReaderPage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'Published on ${DateFormat.yMMMd().format(blog.createdAt)}',
+                            'Published on ${DateFormat.yMMMd().format(blog.publishedAt ?? blog.createdAt)}',
                             style: TextStyle(color: Colors.grey.shade600),
                           ),
                         ],

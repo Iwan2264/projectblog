@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/user_model.dart';
 import '../utils/logger_util.dart';
+import '../utils/image_util.dart';
 
 class AuthController extends GetxController {
   static AuthController instance = Get.find();
@@ -600,15 +601,37 @@ class AuthController extends GetxController {
         return null;
       }
 
+      AppLogger.info('Starting image upload for user: ${user.uid}');
+      AppLogger.info('User is authenticated: ${user.uid}');
+      
+      // Use lossless compression (no compression) for profile images to maintain quality
+      File imageToUpload = imageFile; // Use original file
+      try {
+        // Using isLossless=true means the original image will be used without compression
+        final processedImage = await ImageUtil.compressImage(imageFile, quality: 100, isLossless: true);
+        if (processedImage != null) {
+          imageToUpload = processedImage;
+          AppLogger.info('Profile image prepared for upload (lossless)');
+        }
+      } catch (error) {
+        AppLogger.error('Error processing profile image, using original', error);
+      }
+
       // Upload image to Firebase Storage
       final storageRef = FirebaseStorage.instance
           .ref()
-          .child('profile_images')
-          .child('${user.uid}.jpg');
+          .child('users')
+          .child(user.uid)
+          .child('profile')
+          .child('profile.jpg');
       
-      final uploadTask = storageRef.putFile(imageFile);
+      AppLogger.info('Upload path: users/${user.uid}/profile/profile.jpg');
+      
+      final uploadTask = storageRef.putFile(imageToUpload);
       final snapshot = await uploadTask;
       final downloadURL = await snapshot.ref.getDownloadURL();
+      
+      AppLogger.info('Image uploaded successfully. Download URL: $downloadURL');
       
       // Update user profile with new image URL
       bool success = await updateUserProfile(photoURL: downloadURL);

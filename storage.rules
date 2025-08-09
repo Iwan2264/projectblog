@@ -11,38 +11,62 @@ service firebase.storage {
     }
     
     function isValidImage() {
-      return request.resource.contentType.matches('image/.*');
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size <= 10 * 1024 * 1024; // 10MB limit
     }
     
-    // User content structure
-    match /users/{userId}/{allPaths=**} {
-      // Allow anyone to read user content (profile pictures, blog images)
+    // User content structure - hierarchical permissions for intermediate paths
+    match /users/{userId} {
+      // Allow reading user's content folder
       allow read: if true;
+      // Allow writing only by the user who owns the folder
+      allow write: if isOwner(userId);
       
-      // Allow write only by the user who owns the folder
-      allow write: if isOwner(userId) && isValidImage();
+      // Nested user content
+      match /{allPaths=**} {
+        // Allow anyone to read user content (profile pictures, blog images)
+        allow read: if true;
+        
+        // Allow write only by the user who owns the folder
+        allow write: if isOwner(userId) && isValidImage();
+      }
     }
     
-    // User profile images specific rules
-    match /users/{userId}/profile/{fileName} {
+    // User profile images - specific rules with intermediate path permissions
+    match /users/{userId}/profile {
       allow read: if true;
-      allow write: if isOwner(userId) && isValidImage();
+      allow write: if isOwner(userId);
+      
+      match /{fileName} {
+        allow read: if true;
+        allow write: if isOwner(userId) && isValidImage();
+      }
     }
     
-    // User blog images specific rules
-    match /users/{userId}/blogs/{blogId}/{allImages=**} {
+    // User blog images - specific rules with intermediate path permissions
+    match /users/{userId}/blogs {
       allow read: if true;
-      allow write: if isOwner(userId) && isValidImage();
+      allow write: if isOwner(userId);
+      
+      match /{blogId} {
+        allow read: if true;
+        allow write: if isOwner(userId);
+        
+        match /{fileName} {
+          allow read: if true;
+          allow write: if isOwner(userId) && isValidImage();
+        }
+      }
     }
     
-    // Legacy paths for backward compatibility
+    // Legacy profile images - for backward compatibility
+    match /profile_images/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isValidImage();
+    }
+    
+    // Legacy blog images - read-only for backward compatibility
     match /blog_images/{imageId=**} {
-      allow read: if true;
-      // Disallow new writes to legacy paths
-      allow write: if false;
-    }
-    
-    match /profile_images/{userId} {
       allow read: if true;
       // Disallow new writes to legacy paths
       allow write: if false;
@@ -50,7 +74,7 @@ service firebase.storage {
     
     // Default rule - disallow access unless specific rules allow it
     match /{allPaths=**} {
-      allow read: if true;
+      allow read: if false;
       allow write: if false;
     }
   }

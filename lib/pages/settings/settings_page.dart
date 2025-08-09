@@ -1,14 +1,24 @@
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:projectblog/controllers/settings_controller.dart';
 import 'package:projectblog/pages/settings/profile_card.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   SettingsPage({super.key});
-  final SettingsController controller = Get.put(SettingsController());
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
+  final SettingsController controller = Get.find<SettingsController>();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -47,7 +57,6 @@ class SettingsPage extends StatelessWidget {
                       children: [
                         ProfileInfoWidget(controller: controller),
                         const SizedBox(height: 10),
-                        
                         if (controller.settings.isEmpty)
                           const Center(
                             child: Text('No settings available.'),

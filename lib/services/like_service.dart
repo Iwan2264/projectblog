@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/like_model.dart';
-import '../models/blog_model.dart';
+import '../models/blog_post_model.dart';
 import '../utils/logger_util.dart';
 
 class LikeService {
@@ -55,7 +55,7 @@ class LikeService {
     }
   }
 
-  Future<List<BlogModel>> getLikedBlogsByUser(String userId, {int limit = 20}) async {
+  Future<List<BlogPostModel>> getLikedBlogsByUser(String userId, {int limit = 20}) async {
     try {
       QuerySnapshot likesQuery = await _firestore
           .collection('likes')
@@ -70,11 +70,11 @@ class LikeService {
           .map((doc) => (doc.data() as Map<String, dynamic>)['blogId'] as String)
           .toList();
 
-      List<BlogModel> blogs = [];
+      List<BlogPostModel> blogs = [];
       for (String blogId in blogIds) {
         DocumentSnapshot doc = await _firestore.collection('blogs').doc(blogId).get();
         if (doc.exists) {
-          blogs.add(BlogModel.fromMap(doc.data() as Map<String, dynamic>, doc.id));
+          blogs.add(BlogPostModel.fromMap(doc.id, doc.data() as Map<String, dynamic>));
         }
       }
 

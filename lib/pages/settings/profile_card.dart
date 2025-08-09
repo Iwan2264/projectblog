@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:projectblog/controllers/settings_controller.dart';
+import 'package:projectblog/pages/settings/account_page.dart';
+import 'package:projectblog/widgets/cached_network_image.dart';
 
 class ProfileInfoWidget extends StatelessWidget {
   final SettingsController controller;
@@ -18,147 +20,56 @@ class ProfileInfoWidget extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: controller.isEditing.value ? controller.pickImage : null,
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: theme.colorScheme.surface,
-                          backgroundImage: controller.profileImage.value != null
-                              ? FileImage(controller.profileImage.value!)
-                              : null,
-                          child: controller.profileImage.value == null
-                              ? Icon(
-                                  Icons.person,
-                                  size: 32,
-                                    color: theme.colorScheme.primary.withAlpha(100),
-                                )
-                              : null,
-                        ),
-                        if (controller.isEditing.value)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.edit, size: 12, color: Colors.white),
-                            ),
-                          ),
-                      ],
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => Get.to(() => AccountPage()),
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: Row(
+              children: [
+                controller.isNetworkImage()
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: CachedImage(
+                      imageUrl: controller.getProfileImageSource(),
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
                     ),
+                  )
+                : CircleAvatar(
+                    radius: 32,
+                    backgroundColor: theme.colorScheme.surface,
+                    backgroundImage: controller.getProfileImageSource() != null
+                        ? FileImage(controller.getProfileImageSource()) as ImageProvider
+                        : null,
+                    child: controller.getProfileImageSource() == null
+                        ? Icon(
+                            Icons.person,
+                            size: 32,
+                            color: theme.colorScheme.primary.withAlpha(100),
+                          )
+                        : null,
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        controller.isEditing.value
-                            ? TextFormField(
-                                controller: controller.nameController,
-                                style: theme.textTheme.bodyLarge,
-                                decoration: const InputDecoration(
-                                  labelText: 'Name',
-                                  border: InputBorder.none,
-                                ),
-                                validator: (value) =>
-                                    value == null || value.isEmpty ? 'Enter name' : null,
-                              )
-                            : Text(
-                                controller.name.value,
-                                style: theme.textTheme.titleMedium,
-                              ),
-                        controller.isEditing.value
-                            ? TextFormField(
-                                controller: controller.usernameController,
-                                style: theme.textTheme.bodyMedium,
-                                decoration: const InputDecoration(
-                                  labelText: 'Username',
-                                  border: InputBorder.none,
-                                ),
-                                validator: (value) =>
-                                    value == null || value.isEmpty ? 'Enter username' : null,
-                              )
-                            : Text(
-                                controller.username.value,
-                                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-                              ),
-                      ],
-                    ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        controller.name.value,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      Text(
+                        controller.username.value,
+                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                      ),
+                    ],
                   ),
-                  TextButton(
-                    onPressed: controller.toggleEdit,
-                    child: Text(controller.isEditing.value ? 'Save' : 'Edit'),
-                  ),
-                ],
-              ),
-              const Divider(height: 24),
-              controller.isEditing.value
-                  ? Column(
-                      children: [
-                        TextFormField(
-                          controller: controller.emailController,
-                          style: theme.textTheme.bodyMedium,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) =>
-                              value == null || value.isEmpty ? 'Enter email' : null,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: controller.phoneController,
-                          style: theme.textTheme.bodyMedium,
-                          decoration: const InputDecoration(
-                            labelText: 'Phone Number',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) =>
-                              value == null || value.isEmpty ? 'Enter phone' : null,
-                        ),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Email:'),
-                            Text(
-                              controller.email.value,
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Phone:'),
-                            Text(
-                              controller.phone.value,
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-            ],
+                ),
+                const Icon(Icons.arrow_forward_ios, size: 18)
+              ],
+            ),
           ),
         ),
       ),

@@ -10,6 +10,7 @@ import 'package:projectblog/controllers/auth_controller.dart';
 import 'package:projectblog/controllers/blog_controller.dart';
 import 'package:projectblog/models/blog_post_model.dart';
 import 'package:projectblog/utils/image_util.dart';
+import 'package:projectblog/utils/blog_data_util.dart';
 
 class BlogPostController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -183,16 +184,17 @@ class BlogPostController extends GetxController {
 
         String? imageURL = imageUrl.value;
 
-        // If we have a new image, compress and upload it
+        // If we have a new image, use lossless compression (no actual compression) for cover images
         if (mainImage.value != null) {
           File? imageToUpload = mainImage.value;
           try {
-            final compressed = await ImageUtil.compressImage(mainImage.value!, quality: 80);
-            if (compressed != null) {
-              imageToUpload = compressed;
+            // Use isLossless=true to preserve image quality for cover photos
+            final processed = await ImageUtil.compressImage(mainImage.value!, quality: 100, isLossless: true);
+            if (processed != null) {
+              imageToUpload = processed;
             }
           } catch (e) {
-            print('❌ Error compressing main image: $e');
+            print('❌ Error processing cover image: $e');
           }
           final ref = _storage.ref()
               .child('users')
@@ -205,40 +207,43 @@ class BlogPostController extends GetxController {
           imageURL = await snapshot.ref.getDownloadURL();
         }
       
-      final draftData = {
-        'id': docId, // Ensure the ID is stored in the document
-        'authorId': currentUser.uid,
-        'authorUsername': currentUser.username,
-        'authorPhotoURL': currentUser.photoURL,
-        'authorName': currentUser.name,
-        'title': titleController.text,
-        'content': htmlContent.value,
-        'imageURL': imageURL,
-        'category': selectedCategory.value,
-        'tags': <String>[],
-        'isDraft': true,  // Explicitly set isDraft to true for drafts
-        'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'publishedAt': null,
-        'likesCount': 0,
-        'commentsCount': 0,
-        'viewsCount': 0,
-        'featured': false,
-        'likedBy': <String>[],
-        'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
-      };
-      
-      // Debug log the data schema
-      print('📝 DEBUG: Saving draft with data: ${draftData.toString()}');
-      print('📝 DEBUG: isDraft field explicitly set to: ${draftData['isDraft']}');
-      
-      // Save the draft to user's blogs collection
-      await _firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('blogs')
-          .doc(docId)
-          .set(draftData, SetOptions(merge: true));        print('✅ DEBUG: Draft saved to Firestore with ID: $docId');
+        final draftData = {
+          'id': docId, // Ensure the ID is stored in the document
+          'authorId': currentUser.uid,
+          'authorUsername': currentUser.username,
+          'authorPhotoURL': currentUser.photoURL,
+          'authorName': currentUser.name,
+          'title': titleController.text,
+          'content': htmlContent.value,
+          'imageURL': imageURL,
+          'category': selectedCategory.value,
+          'tags': <String>[],
+          'isDraft': true,  // Explicitly set isDraft to true for drafts
+          'createdAt': draftId.isEmpty ? FieldValue.serverTimestamp() : null,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'publishedAt': null,
+          'likesCount': 0,
+          'commentsCount': 0,
+          'viewsCount': 0,
+          'featured': false,
+          'likedBy': <String>[],
+          'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
+        };
+        
+        // Debug log the data schema
+        print('📝 DEBUG: Saving draft with data: ${draftData.toString()}');
+        print('📝 DEBUG: isDraft field explicitly set to: ${draftData['isDraft']}');
+        
+        // Use the new blog data utility for transaction safety and data consistency
+        final success = await BlogDataUtil.saveDraft(
+          userId: currentUser.uid,
+          blogId: docId,
+          blogData: draftData,
+        );
+        
+        if (!success) {
+          throw Exception('Failed to save draft using BlogDataUtil');
+        }
         
         // Update the draft ID if it was a new draft
         if (draftId.isEmpty) {
@@ -397,16 +402,17 @@ class BlogPostController extends GetxController {
         
         String? imageURL = imageUrl.value;
         
-      // If we have a new image, compress and upload it
+      // If we have a new image, use lossless compression (no actual compression) for cover images
       if (mainImage.value != null) {
         File? imageToUpload = mainImage.value;
         try {
-          final compressed = await ImageUtil.compressImage(mainImage.value!, quality: 80);
-          if (compressed != null) {
-            imageToUpload = compressed;
+          // Use isLossless=true to preserve image quality for cover photos
+          final processed = await ImageUtil.compressImage(mainImage.value!, quality: 100, isLossless: true);
+          if (processed != null) {
+            imageToUpload = processed;
           }
         } catch (e) {
-          print('❌ Error compressing main image: $e');
+          print('❌ Error processing cover image: $e');
         }
         final ref = _storage.ref()
             .child('users')
@@ -441,22 +447,16 @@ class BlogPostController extends GetxController {
         'readTime': BlogPostModel.calculateReadTime(htmlContent.value),
       };
       
-      // Use transaction to save to both user's collection and global blogs collection
-      await _firestore.runTransaction((transaction) async {
-        // Save to user's blogs collection
-        transaction.set(
-          _firestore.collection('users').doc(currentUser.uid).collection('blogs').doc(docId),
-          postData,
-          SetOptions(merge: true)
-        );
-        
-        // Also save to global blogs collection for easier querying
-        transaction.set(
-          _firestore.collection('blogs').doc(docId),
-          postData,
-          SetOptions(merge: true)
-        );
-      });        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
+      // Use the new blog data utility for transaction safety and data consistency
+      final success = await BlogDataUtil.moveDraftToPublished(
+        userId: currentUser.uid,
+        blogId: docId,
+        blogData: postData,
+      );
+      
+      if (!success) {
+        throw Exception('Failed to publish post using BlogDataUtil');
+      }        print('🎉 DEBUG: Post published to Firestore with ID: $docId');
         
         // Show success message
         Get.snackbar(
@@ -535,17 +535,17 @@ class BlogPostController extends GetxController {
         throw Exception('User not authenticated');
       }
       
-      // Delete from user's blogs collection in Firestore
-      await _firestore.collection('users').doc(currentUser.uid).collection('blogs').doc(draftId.value).delete();
+      // Use the new blog data utility for transaction safety and data consistency
+      final success = await BlogDataUtil.deleteBlogPost(
+        userId: currentUser.uid,
+        blogId: draftId.value,
+      );
       
-      // If published, also delete from global blogs collection
-      await _firestore.collection('blogs').doc(draftId.value).get().then((doc) {
-        if (doc.exists) {
-          _firestore.collection('blogs').doc(draftId.value).delete();
-        }
-      });
+      if (!success) {
+        throw Exception('Failed to delete blog post using BlogDataUtil');
+      }
       
-      // Delete associated images
+      // Delete associated images from storage
       try {
         await _storage.ref()
             .child('users')

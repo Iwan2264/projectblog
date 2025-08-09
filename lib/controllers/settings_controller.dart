@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get_storage/get_storage.dart';
+import '../utils/navigation_helper.dart';
 
 import 'package:projectblog/pages/settings/appearance_page.dart';
 import 'package:projectblog/pages/settings/language_page.dart';
@@ -13,6 +14,12 @@ import 'package:projectblog/models/user_model.dart';
 import 'auth_controller.dart';
 
 class SettingsController extends GetxController {
+  // Predefined list of possible interests
+  final List<String> allInterests = [
+    'Art', 'Business', 'Education', 'Fashion', 'Finance', 'Food', 'Growth',
+    'Health', 'Science', 'Sports', 'Tech', 'Travel'
+  ];
+  final RxList<String> selectedInterests = <String>[].obs;
   final box = GetStorage();
   final AuthController _authController = Get.find<AuthController>();
 
@@ -26,12 +33,15 @@ class SettingsController extends GetxController {
 
   // UI state
   var isEditing = false.obs;
+  var isSaving = false.obs;
+  var isUploading = false.obs;
 
   // Input controllers
   final nameController = TextEditingController();
   final usernameController = TextEditingController();
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
+  final bioController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
   // Settings list (updated)
@@ -69,14 +79,16 @@ class SettingsController extends GetxController {
 
   void _updateUserDataFromAuth(userModel) {
     // Update from authenticated user data
-    name.value = userModel.username ?? '';
+    name.value = userModel.name ?? '';
     username.value = userModel.username.isNotEmpty ? '@${userModel.username}' : '';
     email.value = userModel.email ?? '';
-    
     // Load phone from storage (not available in auth)
     phone.value = box.read('phone') ?? '';
-    
-    // Load profile image from auth or storage
+    // Load bio from userModel
+    bioController.text = userModel.bio ?? '';
+  // Load interests
+  selectedInterests.assignAll(userModel.interests ?? []);
+  // Load profile image from auth or storage
     if (userModel.photoURL != null && userModel.photoURL!.isNotEmpty) {
       profileImagePath.value = userModel.photoURL;
       // For network images, we don't set profileImage (File)
@@ -88,29 +100,27 @@ class SettingsController extends GetxController {
         profileImagePath.value = localPath;
       }
     }
-
     // Update text controllers
     nameController.text = name.value;
     usernameController.text = username.value;
     emailController.text = email.value;
     phoneController.text = phone.value;
-
     // Save to storage for offline access
     _saveToStorage();
   }
 
   void _loadStoredData() {
+  selectedInterests.assignAll(box.read('interests') != null ? List<String>.from(box.read('interests')) : []);
     // Fallback to stored data
     name.value = box.read('name') ?? 'User';
     username.value = box.read('username') ?? '@user';
     email.value = box.read('email') ?? '';
     phone.value = box.read('phone') ?? '';
-
+    bioController.text = box.read('bio') ?? '';
     nameController.text = name.value;
     usernameController.text = username.value;
     emailController.text = email.value;
     phoneController.text = phone.value;
-
     final path = box.read('profileImagePath');
     if (path != null && File(path).existsSync()) {
       profileImage.value = File(path);
@@ -119,48 +129,39 @@ class SettingsController extends GetxController {
   }
 
   void _saveToStorage() {
+  box.write('interests', selectedInterests);
     box.write('name', name.value);
     box.write('username', username.value);
     box.write('email', email.value);
     box.write('phone', phone.value);
+    box.write('bio', bioController.text);
     if (profileImagePath.value != null) {
       box.write('profileImagePath', profileImagePath.value);
     }
   }
 
   void toggleEdit() {
-    if (isEditing.value) {
-      if (formKey.currentState!.validate()) {
-        _saveProfile();
-      } else {
-        Get.snackbar('Error', 'Please correct the errors before saving.',
-            snackPosition: SnackPosition.BOTTOM, 
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.red.withValues(alpha: 0.1),
-            colorText: Colors.red);
-      }
-    } else {
-      isEditing.value = true;
-    }
+    // No longer used; editing handled in AccountPage directly
   }
 
-  Future<void> _saveProfile() async {
+  Future<void> saveProfile() async {
+    if (isSaving.value) return; // Prevent multiple submissions
+    
     try {
-      // Show loading
-      Get.dialog(
-        const Center(child: CircularProgressIndicator()),
-        barrierDismissible: false,
-      );
-
+      isSaving.value = true;
+      
       // Update local values
       String newName = nameController.text.trim();
       String newUsername = usernameController.text.replaceAll('@', '').trim();
       String newEmail = emailController.text.trim();
       String newPhone = phoneController.text.trim();
+      String newBio = bioController.text.trim();
 
       // Update user profile in Firestore through AuthController
       bool success = await _authController.updateUserProfile(
         name: newName,
+        bio: newBio,
+        interests: selectedInterests.toList(),
       );
 
       if (success) {
@@ -169,51 +170,62 @@ class SettingsController extends GetxController {
         username.value = '@$newUsername';
         email.value = newEmail;
         phone.value = newPhone;
-
         // Save to local storage
         _saveToStorage();
         
-        isEditing.value = false;
-        
-        Get.back(); // Close loading
-
-        Get.snackbar('Saved', 'Profile updated successfully',
-            snackPosition: SnackPosition.BOTTOM, 
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.green.withValues(alpha: 0.1),
-            colorText: Colors.green);
-      } else {
-        Get.back(); // Close loading
-        Get.snackbar('Error', 'Failed to update profile. Please try again.',
-            snackPosition: SnackPosition.BOTTOM, 
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.red.withValues(alpha: 0.1),
-            colorText: Colors.red);
-      }
-    } catch (e) {
-      Get.back(); // Close loading
-      Get.snackbar('Error', 'An error occurred while saving.',
+        Get.snackbar(
+          'Profile Updated', 
+          'Your profile has been updated successfully',
           snackPosition: SnackPosition.BOTTOM, 
           duration: const Duration(seconds: 2),
-          backgroundColor: Colors.red.withValues(alpha: 0.1),
-          colorText: Colors.red);
+          backgroundColor: Colors.green.withAlpha(25),
+          colorText: Colors.green,
+          margin: const EdgeInsets.all(10),
+        );
+        
+        // Go back to settings page (safer navigation)
+        Get.back(result: {'updated': true});
+      } else {
+        Get.snackbar(
+          'Update Failed', 
+          'Could not update your profile. Please check your network connection and try again.',
+          snackPosition: SnackPosition.BOTTOM, 
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red.withAlpha(25),
+          colorText: Colors.red,
+          margin: const EdgeInsets.all(10),
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error', 
+        'An unexpected error occurred: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM, 
+        duration: const Duration(seconds: 3),
+        backgroundColor: Colors.red.withAlpha(25),
+        colorText: Colors.red,
+        margin: const EdgeInsets.all(10),
+      );
+    } finally {
+      isSaving.value = false;
     }
   }
 
   Future<void> pickImage() async {
+    if (isUploading.value) return; // Prevent multiple uploads
+    
     try {
       final picker = ImagePicker();
-      final picked = await picker.pickImage(source: ImageSource.gallery);
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        // No image compression for profile pictures to maintain quality
+        // No width/height limits to preserve original resolution
+      );
       
       if (picked != null) {
         final file = File(picked.path);
+        isUploading.value = true;
         
-        // Show loading
-        Get.dialog(
-          const Center(child: CircularProgressIndicator()),
-          barrierDismissible: false,
-        );
-
         // Upload image to Firebase Storage through AuthController
         String? downloadURL = await _authController.uploadProfileImage(file);
         
@@ -225,29 +237,39 @@ class SettingsController extends GetxController {
           // Save to local storage
           box.write('profileImagePath', downloadURL);
           
-          Get.back(); // Close loading
-          
-          Get.snackbar('Image Updated', 'Profile image updated successfully',
-              snackPosition: SnackPosition.BOTTOM, 
-              duration: const Duration(seconds: 2),
-              backgroundColor: Colors.green.withValues(alpha: 0.1),
-              colorText: Colors.green);
+          Get.snackbar(
+            'Image Updated', 
+            'Your profile picture has been updated',
+            snackPosition: SnackPosition.BOTTOM, 
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.green.withAlpha(25),
+            colorText: Colors.green,
+            margin: const EdgeInsets.all(10),
+          );
         } else {
-          Get.back(); // Close loading
-          Get.snackbar('Error', 'Failed to upload image. Please try again.',
-              snackPosition: SnackPosition.BOTTOM, 
-              duration: const Duration(seconds: 2),
-              backgroundColor: Colors.red.withValues(alpha: 0.1),
-              colorText: Colors.red);
+          Get.snackbar(
+            'Upload Failed', 
+            'Could not upload image. Please check your network connection and try again.',
+            snackPosition: SnackPosition.BOTTOM, 
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red.withAlpha(25),
+            colorText: Colors.red,
+            margin: const EdgeInsets.all(10),
+          );
         }
       }
     } catch (e) {
-      Get.back(); // Close loading if open
-      Get.snackbar('Error', 'Failed to pick image. Please try again.',
-          snackPosition: SnackPosition.BOTTOM, 
-          duration: const Duration(seconds: 2),
-          backgroundColor: Colors.red.withValues(alpha: 0.1),
-          colorText: Colors.red);
+      Get.snackbar(
+        'Error', 
+        'Failed to select or upload image: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM, 
+        duration: const Duration(seconds: 3),
+        backgroundColor: Colors.red.withAlpha(25),
+        colorText: Colors.red,
+        margin: const EdgeInsets.all(10),
+      );
+    } finally {
+      isUploading.value = false;
     }
   }
 
@@ -297,28 +319,34 @@ class SettingsController extends GetxController {
   }
 
   void navigateToSetting(String setting) {
-    switch (setting) {
-      case 'Account':
-        Get.to(() => AccountPage());
-        break;
-      case 'Language':
-        Get.to(() => LanguagePage());
-        break;
-      case 'Appearance':
-        Get.to(() => AppearancePage());
-        break;
-      case 'Help & Support':
-        Get.to(() => HelpSupportPage());
-        break;
-      case 'About':
-        Get.to(() => AboutPage());
-        break;
-      case 'Logout':
-        _handleLogout();
-        break;
-      default:
-        Get.snackbar('Coming Soon', 'No page defined for "$setting"',
-            snackPosition: SnackPosition.BOTTOM);
+    try {
+      switch (setting) {
+        case 'Account':
+          NavigationHelper.toPage(const AccountPage());
+          break;
+        case 'Language':
+          NavigationHelper.toPage(LanguagePage());
+          break;
+        case 'Appearance':
+          NavigationHelper.toPage(AppearancePage());
+          break;
+        case 'Help & Support':
+          NavigationHelper.toPage(HelpSupportPage());
+          break;
+        case 'About':
+          NavigationHelper.toPage(AboutPage());
+          break;
+        case 'Logout':
+          _handleLogout();
+          break;
+        default:
+          Get.snackbar('Coming Soon', 'No page defined for "$setting"',
+              snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e) {
+      print('Navigation error: $e');
+      Get.snackbar('Error', 'Could not navigate to the requested page',
+          snackPosition: SnackPosition.BOTTOM);
     }
   }
 

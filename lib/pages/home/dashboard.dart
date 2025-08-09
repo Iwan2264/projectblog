@@ -20,19 +20,38 @@ class Dashboard extends StatelessWidget {
       );
       const profileViews = 0; // Placeholder as no profile is created
       
-      return GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-        childAspectRatio: 3,
-        children: [
-          DashboardCard(title: "Total Blogs", value: totalBlogs.toString(), icon: Icons.article),
-          DashboardCard(title: "Total Views", value: totalViews.toString(), icon: Icons.visibility),
-          DashboardCard(title: "My Likes", value: totalLikes.toString(), icon: Icons.favorite),
-          DashboardCard(title: "Profile Views", value: profileViews.toString(), icon: Icons.person),
-        ],
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final screenWidth = constraints.maxWidth;
+          int crossAxisCount = 2;
+          double spacing = 6.0;
+          double aspectRatio = 3.0;
+          
+          if (screenWidth > 800) {
+            crossAxisCount = 4;
+            spacing = 12.0;
+            aspectRatio = 2.5;
+          } else if (screenWidth > 600) {
+            crossAxisCount = 3;
+            spacing = 8.0;
+            aspectRatio = 2.8;
+          }
+
+          return GridView.count(
+            crossAxisCount: crossAxisCount,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: aspectRatio,
+            children: [
+              DashboardCard(title: "Total Blogs", value: totalBlogs.toString(), icon: Icons.article),
+              DashboardCard(title: "Total Views", value: totalViews.toString(), icon: Icons.visibility),
+              DashboardCard(title: "My Likes", value: totalLikes.toString(), icon: Icons.favorite),
+              DashboardCard(title: "Profile Views", value: profileViews.toString(), icon: Icons.person),
+            ],
+          );
+        },
       );
     });
   }

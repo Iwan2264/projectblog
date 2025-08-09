@@ -8,8 +8,15 @@ import 'package:path/path.dart' as p;
 
 class ImageUtil {
   /// Compress an image file to reduce size while maintaining reasonable quality
-  static Future<File?> compressImage(File file, {int quality = 80}) async {
+  /// Set isLossless to true for profile pictures and cover photos to maintain quality
+  static Future<File?> compressImage(File file, {int quality = 80, bool isLossless = false}) async {
     try {
+      // For lossless compression, just return the original file to preserve quality
+      if (isLossless) {
+        print('🖼️ Using lossless compression (no compression) for image');
+        return file;
+      }
+      
       // Get file extension
       final fileExt = p.extension(file.path).toLowerCase();
       
@@ -103,8 +110,8 @@ class ImageUtil {
       
       print('✂️ Image cropped to 16:9 aspect ratio');
       
-      // Compress the cropped image for better size
-      return await compressImage(tempFile, quality: 90);
+      // Use lossless compression for cover images to preserve quality
+      return await compressImage(tempFile, quality: 100, isLossless: true);
     } catch (e) {
       print('❌ Error cropping image: $e');
       return null;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:projectblog/controllers/settings_controller.dart';
+import 'package:projectblog/widgets/cached_network_image.dart';
 
 // Using a record to hold all style properties for a given time of day.
 // This makes the code cleaner and more organized.
@@ -93,21 +94,30 @@ class Header extends StatelessWidget {
           Obx(() {
             final profileImageFile = settingsController.profileImage.value;
             final profileImageUrl = settingsController.profileImagePath.value;
-            ImageProvider? backgroundImage;
 
             if (profileImageFile != null) {
-              backgroundImage = FileImage(profileImageFile);
+              return CircleAvatar(
+                radius: 32,
+                backgroundColor: Colors.white24,
+                backgroundImage: FileImage(profileImageFile),
+              );
             } else if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-              backgroundImage = NetworkImage(profileImageUrl);
+              return CachedAvatar(
+                imageUrl: profileImageUrl,
+                radius: 32,
+                backgroundColor: Colors.white24,
+                fallback: const CircleAvatar(
+                  radius: 32,
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.person, size: 32, color: Colors.white),
+                ),
+              );
             }
 
-            return CircleAvatar(
+            return const CircleAvatar(
               radius: 32,
               backgroundColor: Colors.white24,
-              backgroundImage: backgroundImage,
-              child: backgroundImage == null
-                  ? const Icon(Icons.person, size: 32, color: Colors.white)
-                  : null,
+              child: Icon(Icons.person, size: 32, color: Colors.white),
             );
           }),
           const SizedBox(width: 16),

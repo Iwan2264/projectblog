@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:projectblog/widgets/cached_network_image.dart';
 
 class BlogImagePicker extends StatelessWidget {
   final File? mainImage;
@@ -16,16 +17,21 @@ class BlogImagePicker extends StatelessWidget {
     this.isLoading = false,
   });
 
-  Future<void> _selectImage() async {
+  Future<void> _selectImage(BuildContext context) async {
     final ImagePicker picker = ImagePicker();
+    
+    // Use original resolution without compression for cover images
     final XFile? pickedImage = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1200,
+      // No compression parameters to maintain original quality
     );
     
     if (pickedImage != null) {
-      onImageSelected(File(pickedImage.path));
+      final imageFile = File(pickedImage.path);
+      // Use original image without compression for cover photos
+      onImageSelected(imageFile);
     }
+  
   }
 
   @override
@@ -54,22 +60,12 @@ class BlogImagePicker extends StatelessWidget {
           else if (imageUrl != null && imageUrl!.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                imageUrl!,
+              child: CachedImage(
+                imageUrl: imageUrl!,
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / 
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                    ),
-                  );
-                },
+                borderRadius: BorderRadius.circular(8),
               ),
             )
           else
@@ -89,7 +85,7 @@ class BlogImagePicker extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
-                  onTap: _selectImage,
+                  onTap: () => _selectImage(context),
                   splashColor: Colors.black12,
                 ),
               ),

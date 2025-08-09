@@ -13,7 +13,9 @@ class BlogHomePage extends StatefulWidget {
   State<BlogHomePage> createState() => _BlogHomePageState();
 }
 
-class _BlogHomePageState extends State<BlogHomePage> {
+class _BlogHomePageState extends State<BlogHomePage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final BlogController _blogController = Get.find<BlogController>();
   List<BlogPostModel> recentBlogs = [];
   List<BlogPostModel> trendingBlogs = [];
@@ -59,6 +61,7 @@ class _BlogHomePageState extends State<BlogHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
 
     return Scaffold(

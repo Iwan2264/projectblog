@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../utils/navigation_helper.dart';
+
 import '../../models/blog_post_model.dart';
 import '../../controllers/blog_controller.dart';
 import '../../controllers/auth_controller.dart';
+import '../../utils/responsive_grid.dart';
 import 'blog_detail_page.dart';
 
 class AllPublishedBlogsPage extends StatefulWidget {
@@ -87,18 +90,26 @@ class _AllPublishedBlogsPageState extends State<AllPublishedBlogsPage> {
             
             return RefreshIndicator(
               onRefresh: _loadPublishedPosts,
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: posts.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.75,
-                ),
-                itemBuilder: (context, index) {
-                  final post = posts[index];
-                  return _buildPublishedCard(post);
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final screenWidth = constraints.maxWidth;
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: posts.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: ResponsiveGrid.getCrossAxisCount(screenWidth),
+                      crossAxisSpacing: ResponsiveGrid.getResponsiveSpacing(screenWidth),
+                      mainAxisSpacing: ResponsiveGrid.getResponsiveSpacing(screenWidth),
+                      childAspectRatio: ResponsiveGrid.getChildAspectRatio(
+                        ResponsiveCardType.blogCard, 
+                        screenWidth,
+                      ),
+                    ),
+                    itemBuilder: (context, index) {
+                      final post = posts[index];
+                      return _buildPublishedCard(post);
+                    },
+                  );
                 },
               ),
             );
@@ -285,7 +296,7 @@ class _AllPublishedBlogsPageState extends State<AllPublishedBlogsPage> {
   }
 
   void _viewPost(BlogPostModel post) {
-    Get.to(() => BlogDetailPage(blogId: post.id));
+    NavigationHelper.toPage(BlogDetailPage(blogId: post.id));
   }
   
   void _deletePost(BlogPostModel post) async {

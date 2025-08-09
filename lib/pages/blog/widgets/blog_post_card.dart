@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../models/blog_post_model.dart';
 import '../../../controllers/blog_controller.dart';
+import '../../../utils/navigation_helper.dart';
 import '../blog_detail_page.dart'; // Create this if it doesn't exist
 
 class BlogPostCard extends StatelessWidget {
@@ -31,7 +32,7 @@ class BlogPostCard extends StatelessWidget {
       child: InkWell(
         onTap: () {
           // Navigate to blog detail page - implement this route
-          Get.to(() => BlogDetailPage(blogId: blog.id));
+          NavigationHelper.toPage(BlogDetailPage(blogId: blog.id));
           
           // Increment view count
           blogController.viewBlog(blog.id);

@@ -31,19 +31,42 @@ service cloud.firestore {
         allow write: if isOwner(userId);
       }
       
-      // User's blogs subcollection
-      match /blogs/{blogId} {
-        // Allow reading:
-        // - If NOT a draft (published), anyone can read
-        // - If it's a draft, only the author can read
-        allow read: if isPublished(resource.data) || isOwner(userId);
+      // User's blogs intermediate paths - allow read/write for all nested paths
+      match /blogs/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // User's blogs collections intermediate document
+      match /blogs/collections {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // User's drafts subcollection
+      match /blogs/collections/drafts/{blogId} {
+        // Only the user can read and write their own drafts
+        allow read, write: if isOwner(userId);
         
-        // Only the user can write to their own blogs
+        // Blog comments subcollection for drafts (if needed)
+        match /comments/{commentId} {
+          // Only the blog author can read comments on drafts
+          allow read: if isOwner(userId);
+          
+          // Only the blog author can manage comments on drafts
+          allow write: if isOwner(userId);
+        }
+      }
+      
+      // User's published posts subcollection
+      match /blogs/collections/published/{blogId} {
+        // Anyone can read published blogs
+        allow read: if true;
+        
+        // Only the user can write to their own published blogs
         allow write: if isOwner(userId);
         
-        // Blog comments subcollection
+        // Blog comments subcollection for published posts
         match /comments/{commentId} {
-          // Anyone can read comments
+          // Anyone can read comments on published posts
           allow read: if true;
           
           // To create a comment:

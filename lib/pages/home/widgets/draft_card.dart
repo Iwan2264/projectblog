@@ -203,17 +203,6 @@ class _DraftsGridState extends State<DraftsGrid> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Text(
-                          _getContentPreview(draft.content),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 10,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
                       Text(
                         _formatDate(draft.updatedAt),
                         style: const TextStyle(
@@ -249,15 +238,6 @@ class _DraftsGridState extends State<DraftsGrid> {
         ),
       ),
     );
-  }
-
-  String _getContentPreview(String content) {
-    // Remove HTML tags and get preview
-    String plainText = content.replaceAll(RegExp(r'<[^>]*>'), '');
-    if (plainText.length > 60) {
-      return '${plainText.substring(0, 60)}...';
-    }
-    return plainText;
   }
 
   String _formatDate(DateTime date) {

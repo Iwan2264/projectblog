@@ -43,54 +43,21 @@ class BlogService extends GetxService {
     }
   }
 
-  // Get user's drafts - directly from user's blogs subcollection
+  // Get user's drafts - from drafts subcollection
   Future<List<BlogPostModel>> getUserDrafts(String userId) async {
     try {
-      print('📝 DEBUG: Fetching drafts from Firestore for user: $userId');
+      print('📝 DEBUG: Fetching drafts from users/$userId/blogs/drafts');
       
-      // Simplified query that doesn't require a composite index
-      // Just filter by isDraft without complex ordering
       QuerySnapshot querySnapshot = await _firestore
           .collection('users')
           .doc(userId)
           .collection('blogs')
-          .where('isDraft', isEqualTo: true)
+          .doc('collections')
+          .collection('drafts')
+          .orderBy('updatedAt', descending: true)
           .get();
       
-      print('📝 DEBUG: Found ${querySnapshot.docs.length} drafts in Firestore');
-      
-      // If no drafts found, log the path to help debugging
-      if (querySnapshot.docs.isEmpty) {
-        print('📝 DEBUG: No drafts found at path: users/$userId/blogs where isDraft=true');
-        
-        // Check if there are any documents at all in this subcollection
-        QuerySnapshot allDocsSnapshot = await _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('blogs')
-            .limit(5)
-            .get();
-            
-        if (allDocsSnapshot.docs.isEmpty) {
-          print('📝 DEBUG: No documents found at all in blogs subcollection');
-        } else {
-          print('📝 DEBUG: Found ${allDocsSnapshot.docs.length} total documents in blogs subcollection');
-          // Check if isDraft field exists in these documents
-          bool anyDraftField = false;
-          for (var doc in allDocsSnapshot.docs) {
-            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-            if (data.containsKey('isDraft')) {
-              anyDraftField = true;
-              print('📝 DEBUG: Document ${doc.id} has isDraft=${data['isDraft']}');
-            } else {
-              print('📝 DEBUG: Document ${doc.id} is missing isDraft field');
-            }
-          }
-          if (!anyDraftField) {
-            print('📝 DEBUG: No documents have isDraft field - possible data structure issue');
-          }
-        }
-      }
+      print('📝 DEBUG: Found ${querySnapshot.docs.length} drafts');
       
       return querySnapshot.docs
           .map((doc) => BlogPostModel.fromMap(doc.id, doc.data() as Map<String, dynamic>))
@@ -102,14 +69,15 @@ class BlogService extends GetxService {
     }
   }
 
-  // Get user's published posts - directly from user's blogs subcollection
+  // Get user's published posts - from published subcollection
   Future<List<BlogPostModel>> getUserPublishedPosts(String userId) async {
     try {
       QuerySnapshot querySnapshot = await _firestore
           .collection('users')
           .doc(userId)
           .collection('blogs')
-          .where('isDraft', isEqualTo: false)
+          .doc('collections')
+          .collection('published')
           .orderBy('publishedAt', descending: true)
           .get();
       
@@ -132,20 +100,37 @@ class BlogService extends GetxService {
         return BlogPostModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
       }
       
-      // If not found, try to find in user's blogs collections
+      // If not found, try to find in user's blogs subcollections
       // (this is a more expensive operation, but ensures we find drafts too)
       String? authorId = await _findPostAuthorId(postId);
       
       if (authorId != null) {
-        DocumentSnapshot userBlogDoc = await _firestore
+        // Check drafts first
+        DocumentSnapshot draftDoc = await _firestore
             .collection('users')
             .doc(authorId)
             .collection('blogs')
+            .doc('collections')
+            .collection('drafts')
             .doc(postId)
             .get();
             
-        if (userBlogDoc.exists) {
-          return BlogPostModel.fromMap(userBlogDoc.id, userBlogDoc.data() as Map<String, dynamic>);
+        if (draftDoc.exists) {
+          return BlogPostModel.fromMap(draftDoc.id, draftDoc.data() as Map<String, dynamic>);
+        }
+        
+        // Then check published
+        DocumentSnapshot publishedDoc = await _firestore
+            .collection('users')
+            .doc(authorId)
+            .collection('blogs')
+            .doc('collections')
+            .collection('published')
+            .doc(postId)
+            .get();
+            
+        if (publishedDoc.exists) {
+          return BlogPostModel.fromMap(publishedDoc.id, publishedDoc.data() as Map<String, dynamic>);
         }
       }
       
@@ -159,19 +144,37 @@ class BlogService extends GetxService {
   // Helper method to find a post's author ID
   Future<String?> _findPostAuthorId(String postId) async {
     try {
-      // Query to find the post in any user's blogs collection
+      // Query to find the post in any user's blogs subcollections
       QuerySnapshot usersSnapshot = await _firestore.collection('users').get();
       
       for (var userDoc in usersSnapshot.docs) {
         String userId = userDoc.id;
-        DocumentSnapshot blogDoc = await _firestore
+        
+        // Check in drafts subcollection
+        DocumentSnapshot draftDoc = await _firestore
             .collection('users')
             .doc(userId)
             .collection('blogs')
+            .doc('collections')
+            .collection('drafts')
             .doc(postId)
             .get();
             
-        if (blogDoc.exists) {
+        if (draftDoc.exists) {
+          return userId;
+        }
+        
+        // Check in published subcollection
+        DocumentSnapshot publishedDoc = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('blogs')
+            .doc('collections')
+            .collection('published')
+            .doc(postId)
+            .get();
+            
+        if (publishedDoc.exists) {
           return userId;
         }
       }
@@ -198,11 +201,13 @@ class BlogService extends GetxService {
       Map<String, dynamic> data = globalPostDoc.data() as Map<String, dynamic>;
       String authorId = data['authorId'];
       
-      // Get reference to post in user's blogs collection
+      // Get reference to post in user's published blogs subcollection
       DocumentReference userPostRef = _firestore
           .collection('users')
           .doc(authorId)
           .collection('blogs')
+          .doc('collections')
+          .collection('published')
           .doc(postId);
       
       return await _firestore.runTransaction((transaction) async {
@@ -270,9 +275,9 @@ class BlogService extends GetxService {
             'lastViewed': serverTimestamp,
           });
           
-          // Update the user's copy
+          // Update the user's published copy
           transaction.update(
-            _firestore.collection('users').doc(authorId).collection('blogs').doc(postId),
+            _firestore.collection('users').doc(authorId).collection('blogs').doc('collections').collection('published').doc(postId),
             {
               'viewsCount': FieldValue.increment(1),
               'lastViewed': serverTimestamp,
@@ -401,12 +406,14 @@ class BlogService extends GetxService {
           comment.toMap(),
         );
         
-        // Add comment to blog's comments subcollection
+        // Add comment to blog's comments subcollection in published posts
         transaction.set(
           _firestore
               .collection('users')
               .doc(authorId)
               .collection('blogs')
+              .doc('collections')
+              .collection('published')
               .doc(postId)
               .collection('comments')
               .doc(commentId),
@@ -419,12 +426,14 @@ class BlogService extends GetxService {
           {'commentsCount': FieldValue.increment(1)},
         );
         
-        // Increment comment count in user's blogs collection
+        // Increment comment count in user's published blogs collection
         transaction.update(
           _firestore
               .collection('users')
               .doc(authorId)
               .collection('blogs')
+              .doc('collections')
+              .collection('published')
               .doc(postId),
           {'commentsCount': FieldValue.increment(1)},
         );
@@ -448,11 +457,13 @@ class BlogService extends GetxService {
       
       String authorId = (globalPostDoc.data() as Map<String, dynamic>)['authorId'];
       
-      // Get comments from the blog's comments subcollection
+      // Get comments from the blog's comments subcollection in published posts
       QuerySnapshot querySnapshot = await _firestore
           .collection('users')
           .doc(authorId)
           .collection('blogs')
+          .doc('collections')
+          .collection('published')
           .doc(postId)
           .collection('comments')
           .where('parentCommentId', isNull: true) // Only top-level comments
@@ -494,42 +505,112 @@ class BlogService extends GetxService {
     }
   }
 
+  // Helper method to synchronize document IDs between collections
+  Future<bool> synchronizePostDocumentIds() async {
+    try {
+      // Get all global blog posts
+      QuerySnapshot globalPosts = await _firestore.collection('blogs').get();
+      
+      for (var globalDoc in globalPosts.docs) {
+        Map<String, dynamic> data = globalDoc.data() as Map<String, dynamic>;
+        String authorId = data['authorId'];
+        String postId = globalDoc.id;
+        
+        // Check if the post exists in the user's published collection
+        DocumentReference userPostRef = _firestore
+            .collection('users')
+            .doc(authorId)
+            .collection('blogs')
+            .doc('collections')
+            .collection('published')
+            .doc(postId);
+            
+        DocumentSnapshot userPostDoc = await userPostRef.get();
+        
+        if (!userPostDoc.exists) {
+          // Post doesn't exist in user's collection, create it
+          await userPostRef.set(data, SetOptions(merge: true));
+          print('✅ Synchronized post $postId for user $authorId');
+        } else {
+          // Ensure the document has the correct ID field
+          Map<String, dynamic> userData = userPostDoc.data() as Map<String, dynamic>;
+          if (userData['id'] != postId) {
+            await userPostRef.update({'id': postId});
+            print('✅ Updated ID field for post $postId');
+          }
+        }
+      }
+      
+      return true;
+    } catch (e) {
+      AppLogger.error('Error synchronizing document IDs', e);
+      return false;
+    }
+  }
+
   // Delete a blog post (works for both drafts and published posts)
   Future<bool> deleteBlogPost(String blogId, String userId) async {
     try {
       print('🗑️ DEBUG: Attempting to delete blog with ID: $blogId by user: $userId');
       
-      // First check that the post exists and belongs to the user
-      DocumentSnapshot blogDoc = await _firestore
+      // Check if it's a draft first
+      DocumentSnapshot draftDoc = await _firestore
           .collection('users')
           .doc(userId)
           .collection('blogs')
+          .doc('collections')
+          .collection('drafts')
           .doc(blogId)
           .get();
       
-      if (!blogDoc.exists) {
-        print('❌ DEBUG: Blog post not found or user does not have permission');
-        return false;
+      bool isDraft = draftDoc.exists;
+      bool isPublished = false;
+      
+      if (!isDraft) {
+        // Check if it's a published post
+        DocumentSnapshot publishedDoc = await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('blogs')
+            .doc('collections')
+            .collection('published')
+            .doc(blogId)
+            .get();
+        
+        isPublished = publishedDoc.exists;
+        
+        if (!isPublished) {
+          print('❌ DEBUG: Blog post not found in either drafts or published collections');
+          return false;
+        }
       }
       
-      // Check if it exists in the global blogs collection BEFORE transaction
-      DocumentSnapshot globalBlogDoc = await _firestore.collection('blogs').doc(blogId).get();
-      bool existsInGlobalCollection = globalBlogDoc.exists;
+      print('🔍 DEBUG: Blog is draft: $isDraft, published: $isPublished');
       
-      print('🔍 DEBUG: Blog exists in global collection: $existsInGlobalCollection');
-      
-      // Execute deletes separately to avoid transaction read/write ordering issues
+      // Execute deletes
       try {
-        // Delete from user's blogs collection
-        await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('blogs')
-          .doc(blogId)
-          .delete();
-        
-        // If it's in the global collection, delete it from there too
-        if (existsInGlobalCollection) {
+        if (isDraft) {
+          // Delete from drafts subcollection
+          await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('blogs')
+            .doc('collections')
+            .collection('drafts')
+            .doc(blogId)
+            .delete();
+        } else if (isPublished) {
+          // Delete from published subcollection
+          await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('blogs')
+            .doc('collections')
+            .collection('published')
+            .doc(blogId)
+            .delete();
+          
+          // Also delete from global collection for published posts
           await _firestore
             .collection('blogs')
             .doc(blogId)

@@ -5,11 +5,20 @@ import 'package:projectblog/pages/home/header.dart';
 import 'package:projectblog/pages/home/dashboard.dart'; 
 import 'package:projectblog/pages/home/blog_section.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final ThemeData theme = Theme.of(context);
     final AuthController authController = Get.find();
 
