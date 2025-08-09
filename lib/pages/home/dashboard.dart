@@ -1,34 +1,40 @@
 import 'package:flutter/material.dart';
-class Dashboard extends StatelessWidget {
-  final int totalBlogs;
-  final int totalLikes;
-  final int totalViews;
-  final int profileViews;
+import 'package:get/get.dart';
+import '../../controllers/blog_controller.dart';
 
-  const Dashboard({
-    required this.totalBlogs,
-    required this.totalLikes,
-    required this.totalViews,
-    required this.profileViews,
-    super.key,
-  });
+class Dashboard extends StatelessWidget {
+  const Dashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 6,
-      mainAxisSpacing: 6,
-      childAspectRatio: 3,
-      children: [
-        DashboardCard(title: "Total Blogs", value: totalBlogs.toString(), icon: Icons.article),
-        DashboardCard(title: "Total Views", value: totalViews.toString(), icon: Icons.visibility),
-        DashboardCard(title: "My Likes", value: totalLikes.toString(), icon: Icons.favorite),
-        DashboardCard(title: "Profile Views", value: profileViews.toString(), icon: Icons.person),
-      ],
-    );
+    final BlogController blogController = Get.find<BlogController>();
+    
+    return Obx(() {
+      // Calculate real data
+      final totalBlogs = blogController.userPublishedPosts.length;
+      final totalViews = blogController.userPublishedPosts.fold<int>(
+        0, (sum, blog) => sum + blog.viewsCount
+      );
+      final totalLikes = blogController.userPublishedPosts.fold<int>(
+        0, (sum, blog) => sum + blog.likesCount
+      );
+      const profileViews = 0; // Placeholder as no profile is created
+      
+      return GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+        childAspectRatio: 3,
+        children: [
+          DashboardCard(title: "Total Blogs", value: totalBlogs.toString(), icon: Icons.article),
+          DashboardCard(title: "Total Views", value: totalViews.toString(), icon: Icons.visibility),
+          DashboardCard(title: "My Likes", value: totalLikes.toString(), icon: Icons.favorite),
+          DashboardCard(title: "Profile Views", value: profileViews.toString(), icon: Icons.person),
+        ],
+      );
+    });
   }
 }
 class DashboardCard extends StatelessWidget {

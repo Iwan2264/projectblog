@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/category_widget.dart';
 
 class CategorySelector extends StatelessWidget {
   final String selectedCategory;
@@ -12,12 +13,13 @@ class CategorySelector extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
+    // Use the same categories as in category_widget.dart for consistency
     final categories = [
-      'Tech', 'Business', 'Health', 'Sports', 'Travel', 
-      'Food', 'Fashion', 'Science', 'Education', 'Art',
-      'Finance', 'Growth'
+      'Technology', 'Health & Wellness', 'Finance & Investing', 'Travel',
+      'Food & Recipes', 'Lifestyle & Fashion', 'Business & Marketing',
+      'Education', 'Arts & Culture', 'Science', 'Personal Growth', 'Sports & Gaming'
     ];
-    
+    final categoryImageGetter = CategoriesSection().getCategoryImage;
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         labelText: 'Category',
@@ -27,18 +29,25 @@ class CategorySelector extends StatelessWidget {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
-      value: selectedCategory.isNotEmpty ? selectedCategory : null,
+      value: categories.contains(selectedCategory) ? selectedCategory : null,
       onChanged: (value) {
         if (value != null) {
           onCategoryChanged(value);
         }
       },
       items: categories.map((category) {
+        final imagePath = categoryImageGetter(category)['image'];
         return DropdownMenuItem<String>(
           value: category,
           child: Row(
             children: [
-              _getCategoryIcon(category),
+              Image.asset(
+                imagePath!,
+                width: 24,
+                height: 24,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 20),
+              ),
               const SizedBox(width: 8),
               Text(category),
             ],
@@ -46,52 +55,5 @@ class CategorySelector extends StatelessWidget {
         );
       }).toList(),
     );
-  }
-  
-  Widget _getCategoryIcon(String category) {
-    IconData iconData;
-    
-    switch (category.toLowerCase()) {
-      case 'tech':
-        iconData = Icons.computer;
-        break;
-      case 'business':
-        iconData = Icons.business;
-        break;
-      case 'health':
-        iconData = Icons.health_and_safety;
-        break;
-      case 'sports':
-        iconData = Icons.sports;
-        break;
-      case 'travel':
-        iconData = Icons.travel_explore;
-        break;
-      case 'food':
-        iconData = Icons.restaurant;
-        break;
-      case 'fashion':
-        iconData = Icons.shopping_bag;
-        break;
-      case 'science':
-        iconData = Icons.science;
-        break;
-      case 'education':
-        iconData = Icons.school;
-        break;
-      case 'art':
-        iconData = Icons.palette;
-        break;
-      case 'finance':
-        iconData = Icons.attach_money;
-        break;
-      case 'growth':
-        iconData = Icons.trending_up;
-        break;
-      default:
-        iconData = Icons.category;
-    }
-    
-    return Icon(iconData, size: 20);
   }
 }

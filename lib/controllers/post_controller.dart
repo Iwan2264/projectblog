@@ -7,8 +7,8 @@ import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:projectblog/controllers/auth_controller.dart';
+import 'package:projectblog/controllers/blog_controller.dart';
 import 'package:projectblog/models/blog_post_model.dart';
-import 'package:projectblog/pages/blog/blog_detail_page.dart';
 import 'package:projectblog/utils/image_util.dart';
 
 class BlogPostController extends GetxController {
@@ -81,9 +81,18 @@ class BlogPostController extends GetxController {
         
         print('🔍 DEBUG: Draft loaded successfully. Title: ${data['title']}, Category: ${data['category']}');
         
-        // Wait a bit for the editor to initialize before setting content
-        await Future.delayed(const Duration(milliseconds: 500));
-        editorController.setText(htmlContent.value);
+        // Wait longer for the editor to fully initialize before setting content
+        await Future.delayed(const Duration(seconds: 2));
+        
+        // Check if editor is ready before setting text
+        try {
+          editorController.setText(htmlContent.value);
+        } catch (e) {
+          print('⚠️ DEBUG: HTML editor not ready, will retry setting text: $e');
+          // Try again with a longer delay
+          await Future.delayed(const Duration(seconds: 2));
+          editorController.setText(htmlContent.value);
+        }
       } else {
         print('⚠️ DEBUG: Draft not found in either collection');
         throw Exception('Draft not found');
@@ -114,6 +123,11 @@ class BlogPostController extends GetxController {
     if (isSavingDraft.value) {
       print('🔍 DEBUG: Already saving, returning');
       return false;
+    }
+    
+    // Ensure we have a valid category selected
+    if (selectedCategory.value.isEmpty) {
+      selectedCategory.value = 'Technology';
     }
 
     if (titleController.text.isEmpty && htmlContent.isEmpty) {
@@ -192,6 +206,7 @@ class BlogPostController extends GetxController {
         }
       
       final draftData = {
+        'id': docId, // Ensure the ID is stored in the document
         'authorId': currentUser.uid,
         'authorUsername': currentUser.username,
         'authorPhotoURL': currentUser.photoURL,
@@ -233,6 +248,16 @@ class BlogPostController extends GetxController {
         
         // Update the image URL
         imageUrl.value = imageURL;
+        
+        // Refresh the drafts in blog controller
+        try {
+          final blogController = Get.find<BlogController>();
+          if (_authController.userModel.value != null) {
+            blogController.refreshDrafts(_authController.userModel.value!.uid);
+          }
+        } catch (e) {
+          print('⚠️ DEBUG: Could not refresh drafts: $e');
+        }
         
         Get.snackbar(
           'Success',
@@ -442,24 +467,9 @@ class BlogPostController extends GetxController {
           colorText: Colors.white,
           duration: const Duration(seconds: 2),
         );
-        
-        // Navigate to the blog detail page after a short delay
+        // Navigate to the home page after a short delay
         Future.delayed(const Duration(milliseconds: 1500), () {
-          // First close the create post page
-          Get.back(); 
-          
-          print('🚀 DEBUG: Navigating to blog detail page with ID: $docId');
-          
-          // Use dynamic routing to the blog detail page
-          // The route should match what's defined in main.dart
-          try {
-            // First try named route
-            Get.toNamed('/blog/detail/$docId');
-          } catch (e) {
-            print('⚠️ DEBUG: Error using named route: $e');
-            // Fall back to direct navigation if named route fails
-            Get.to(() => BlogDetailPage(blogId: docId));
-          }
+          Get.offAllNamed('/home');
         });
       });
     } catch (e) {

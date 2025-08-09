@@ -46,12 +46,7 @@ class HomePage extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const Dashboard(
-                        totalBlogs: 15,
-                        totalLikes: 1200,
-                        totalViews: 10000,
-                        profileViews: 450,
-                      ),
+                      const Dashboard(),
                     ],
                   ),
                 ),

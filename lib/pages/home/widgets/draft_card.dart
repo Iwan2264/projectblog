@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:math';
 
 import '../../../models/blog_post_model.dart';
 import '../../../controllers/blog_controller.dart';
@@ -19,6 +20,7 @@ class _DraftsGridState extends State<DraftsGrid> {
   final AuthController _authController = Get.find<AuthController>();
   
   bool _isLoading = true;
+  int _displayCount = 6;
 
   @override
   void initState() {
@@ -31,218 +33,216 @@ class _DraftsGridState extends State<DraftsGrid> {
     
     final currentUser = _authController.userModel.value;
     if (currentUser != null) {
-      print('📝 DEBUG: Loading drafts for user ID: ${currentUser.uid}');
-      
-      // If the cache is empty, this will load from Firestore
-      // Otherwise, it will use the cache
       await _blogController.loadUserDrafts(currentUser.uid);
-      print('📝 DEBUG: Loaded ${_blogController.userDrafts.length} drafts');
-      
-      setState(() {
-        _isLoading = false;
-      });
-    } else {
-      print('⚠️ DEBUG: No current user found when loading drafts');
-      setState(() => _isLoading = false);
     }
+    
+    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
     return Obx(() {
-      final drafts = _blogController.userDrafts;
-      
-      if (drafts.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.drafts_outlined,
-                size: 64,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "You have no saved drafts.",
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Start writing to save your first draft!",
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
+      if (_isLoading) {
+        return const Center(
+          child: CircularProgressIndicator(),
         );
       }
-
+      
+      final currentUser = _authController.userModel.value;
+      final drafts = currentUser != null
+          ? _blogController.userDrafts
+              .where((draft) => draft.authorId == currentUser.uid)
+              .toList()
+          : [];
+              
+      if (drafts.isEmpty) {
+        return _buildEmptyState();
+      }
+      
       return RefreshIndicator(
         onRefresh: _loadDrafts,
-        child: GridView.builder(
-          shrinkWrap: true,
+        child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: drafts.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.75,
+          child: Column(
+            children: [
+              _buildGridView(drafts.cast<BlogPostModel>()),
+              if (_displayCount < drafts.length) _buildLoadMoreButton(drafts.length),
+              // Add bottom padding to ensure the grid doesn't overflow
+              const SizedBox(height: 16),
+            ],
           ),
-          itemBuilder: (context, index) {
-            final draft = drafts[index];
-            return _buildDraftCard(draft);
-          },
         ),
       );
     });
   }
+  
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(
+            Icons.drafts_outlined,
+            size: 64,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 16),
+          Text(
+            "You have no saved drafts.",
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 16,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Start writing to save your first draft!",
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridView(List<BlogPostModel> drafts) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: min(_displayCount, drafts.length),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 1,
+          mainAxisSpacing: 1,
+          childAspectRatio: 1.0,
+        ),
+        itemBuilder: (context, index) {
+          final draft = drafts[index];
+          return _buildDraftCard(draft);
+        },
+      ),
+    );
+  }
+
+  Widget _buildLoadMoreButton(int totalDrafts) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0, bottom: 16.0),
+      child: OutlinedButton(
+        onPressed: () {
+          setState(() {
+            _displayCount = min(_displayCount + 6, totalDrafts);
+          });
+        },
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        ),
+        child: Text('Load More (${totalDrafts - _displayCount} remaining)'),
+      ),
+    );
+  }
 
   Widget _buildDraftCard(BlogPostModel draft) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _editDraft(draft),
+    return GestureDetector(
+      onTap: () => _editDraft(draft),
+      child: Card(
+        elevation: 3,
+        margin: const EdgeInsets.all(3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(6),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover Image
-            Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                  color: Colors.grey[200],
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(6),
                 ),
                 child: draft.imageURL != null && draft.imageURL!.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(12),
+                    ? CachedNetworkImage(
+                        imageUrl: draft.imageURL!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(),
                         ),
-                        child: CachedNetworkImage(
-                          imageUrl: draft.imageURL!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: Icon(
-                                Icons.image_outlined,
-                                size: 32,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
                         ),
                       )
-                    : Container(
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(12),
-                          ),
-                          color: Colors.grey[200],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.image_outlined,
-                            size: 32,
-                            color: Colors.grey,
-                          ),
+                    : const Center(
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 32,
+                          color: Colors.grey,
                         ),
                       ),
               ),
             ),
-            
-            // Content
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      draft.title.isNotEmpty ? draft.title : 'Untitled Draft',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    draft.title.isNotEmpty ? draft.title : 'Untitled Draft',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
-                    const SizedBox(height: 4),
-                    
-                    // Content preview
-                    Expanded(
-                      child: Text(
-                        _getContentPreview(draft.content),
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    
-                    // Date and category
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _formatDate(draft.updatedAt),
-                          style: TextStyle(
-                            color: Colors.grey[500],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _getContentPreview(draft.content),
+                          style: const TextStyle(
+                            color: Colors.grey,
                             fontSize: 10,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withAlpha(50),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            draft.category,
-                            style: const TextStyle(
-                              color: Colors.orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                      ),
+                      Text(
+                        _formatDate(draft.updatedAt),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
                     ),
-                  ],
-                ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withAlpha(50),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      draft.category,
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

@@ -19,9 +19,8 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
   final BlogController _blogController = Get.find<BlogController>();
   final AuthController _authController = Get.find<AuthController>();
 
-  List<BlogPostModel> _publishedBlogs = [];
   bool _isLoading = true;
-  int _displayCount = 10;
+  int _displayCount = 6;
 
   @override
   void initState() {
@@ -31,47 +30,40 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
 
   Future<void> _loadPublishedBlogs() async {
     setState(() => _isLoading = true);
-
     final currentUser = _authController.userModel.value;
     if (currentUser != null) {
-      final blogs = await _blogController.loadUserPublishedBlogs(currentUser.uid);
-      setState(() {
-        _publishedBlogs = blogs;
-        _displayCount = min(_publishedBlogs.length, 6);
-        _isLoading = false;
-      });
-    } else {
-      setState(() => _isLoading = false);
+      await _blogController.loadUserPublishedBlogs(currentUser.uid);
     }
-  }
-
-  void _loadMore() {
-    setState(() {
-      _displayCount = min(_publishedBlogs.length, _displayCount + 6);
-    });
+    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+    return Obx(() {
+      if (_isLoading) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+      final currentUser = _authController.userModel.value;
+      final publishedBlogs = currentUser != null
+          ? _blogController.userPublishedPosts
+              .where((blog) => blog.authorId == currentUser.uid)
+              .toList()
+          : [];
+      if (publishedBlogs.isEmpty) {
+        return _buildEmptyState();
+      }
+      return RefreshIndicator(
+        onRefresh: _loadPublishedBlogs,
+        child: Column(
+          children: [
+            _buildGridView(publishedBlogs.cast<BlogPostModel>()),
+            if (_displayCount < publishedBlogs.length) _buildLoadMoreButton(publishedBlogs.length),
+          ],
+        ),
       );
-    }
-
-    if (_publishedBlogs.isEmpty) {
-      return _buildEmptyState();
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadPublishedBlogs,
-      child: Column(
-        children: [
-          _buildGridView(),
-          if (_displayCount < _publishedBlogs.length) _buildLoadMoreButton(),
-        ],
-      ),
-    );
+    });
   }
 
   Widget _buildEmptyState() {
@@ -105,56 +97,58 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
     );
   }
 
-  // Adjusted the grid layout to ensure enough space below the image for text and proper spacing between grids
-  Widget _buildGridView() {
-    return SingleChildScrollView(
+  Widget _buildGridView(List<BlogPostModel> blogs) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: _displayCount,
+        itemCount: min(_displayCount, blogs.length),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           crossAxisSpacing: 1,
-            mainAxisSpacing: 1,
-            childAspectRatio: 1.0,
+          mainAxisSpacing: 1,
+          childAspectRatio: 1.0,
         ),
         itemBuilder: (context, index) {
-          final blog = _publishedBlogs[index];
+          final blog = blogs[index];
           return _buildBlogCard(blog);
         },
       ),
     );
   }
 
-  Widget _buildLoadMoreButton() {
+  Widget _buildLoadMoreButton(int totalBlogs) {
     return Padding(
       padding: const EdgeInsets.only(top: 16.0),
       child: OutlinedButton(
-        onPressed: _loadMore,
+        onPressed: () {
+          setState(() {
+            _displayCount = min(_displayCount + 6, totalBlogs);
+          });
+        },
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
         ),
-        child: Text('Load More (${_publishedBlogs.length - _displayCount} remaining)'),
+        child: Text('Load More (${totalBlogs - _displayCount} remaining)'),
       ),
     );
   }
 
-  // Removed the _getContentPreview function and refined the blog card code
   Widget _buildBlogCard(BlogPostModel blog) {
     return GestureDetector(
       onTap: () => _viewBlog(blog),
       child: Card(
         elevation: 3,
-        margin: const EdgeInsets.all(3), // Added margin for better spacing
+        margin: const EdgeInsets.all(3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover Image in landscape orientation
             AspectRatio(
-              aspectRatio: 16 / 9, // Landscape aspect ratio
+              aspectRatio: 16 / 9,
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(6),
@@ -180,8 +174,6 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
                       ),
               ),
             ),
-
-            // Text fields below the cover image
             Padding(
               padding: const EdgeInsets.all(4.0),
               child: Column(
@@ -198,8 +190,8 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
                   ),
                   const SizedBox(height: 2),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align left and right elements
-                    crossAxisAlignment: CrossAxisAlignment.center, // Center-align vertically
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Row(
                         children: [
@@ -272,7 +264,6 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-
     if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
