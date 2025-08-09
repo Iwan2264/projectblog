@@ -227,7 +227,7 @@ class _DraftsGridState extends State<DraftsGrid> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.2),
+                            color: Colors.orange.withAlpha(50),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(

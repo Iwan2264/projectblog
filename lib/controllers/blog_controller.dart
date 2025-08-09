@@ -293,7 +293,7 @@ class BlogController extends GetxController {
           'Error',
           'Please log in to like posts',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return;
@@ -308,7 +308,7 @@ class BlogController extends GetxController {
         'Success',
         newLikeStatus ? 'Post liked!' : 'Post unliked',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.8),
+        backgroundColor: Colors.green.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
         duration: Duration(seconds: 1),
       );
@@ -319,7 +319,7 @@ class BlogController extends GetxController {
         'Error',
         'Failed to like/unlike post',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
     }
@@ -432,7 +432,7 @@ class BlogController extends GetxController {
           'Authentication Error',
           'You need to be logged in to delete posts',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return false;
@@ -444,7 +444,7 @@ class BlogController extends GetxController {
           'Error',
           'Unable to verify your identity',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return false;
@@ -457,7 +457,7 @@ class BlogController extends GetxController {
           'Error',
           'Blog post not found',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return false;
@@ -469,7 +469,7 @@ class BlogController extends GetxController {
           'Permission Denied',
           'You can only delete your own posts',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return false;
@@ -508,7 +508,7 @@ class BlogController extends GetxController {
           'Success',
           'Post deleted successfully',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.8),
+          backgroundColor: Colors.green.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return true;
@@ -517,7 +517,7 @@ class BlogController extends GetxController {
           'Error',
           'Failed to delete post',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return false;
@@ -528,7 +528,7 @@ class BlogController extends GetxController {
         'Error',
         'An error occurred while deleting the post',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
       return false;

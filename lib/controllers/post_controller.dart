@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:projectblog/controllers/auth_controller.dart';
 import 'package:projectblog/models/blog_post_model.dart';
 import 'package:projectblog/pages/blog/blog_detail_page.dart';
+import 'package:projectblog/utils/image_util.dart';
 
 class BlogPostController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -93,7 +94,7 @@ class BlogPostController extends GetxController {
         'Error',
         'Failed to load draft: $e',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
     } finally {
@@ -120,7 +121,7 @@ class BlogPostController extends GetxController {
         'Error',
         'Post title and content cannot be empty',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
       return false;
@@ -137,7 +138,7 @@ class BlogPostController extends GetxController {
           'Authentication Error',
           'You need to be logged in to save a draft. Please log in again.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return false;
@@ -154,7 +155,7 @@ class BlogPostController extends GetxController {
           'Error',
           'Unable to load user data. Please try logging in again.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return false;
@@ -162,25 +163,33 @@ class BlogPostController extends GetxController {
       
       await editorController.getText().then((content) async {
         htmlContent.value = content;
-        
+
         // Determine document ID once and stick with it
         final String docId = draftId.value.isNotEmpty ? draftId.value : const Uuid().v4();
-        
+
         String? imageURL = imageUrl.value;
-        
-      // If we have a new image, upload it
-      if (mainImage.value != null) {
-        // Use structured path for blog images
-        final ref = _storage.ref()
-            .child('users')
-            .child(currentUser.uid)
-            .child('blogs')
-            .child(docId)
-            .child('main.jpg');
-        final uploadTask = ref.putFile(mainImage.value!);
-        final snapshot = await uploadTask;
-        imageURL = await snapshot.ref.getDownloadURL();
-      }
+
+        // If we have a new image, compress and upload it
+        if (mainImage.value != null) {
+          File? imageToUpload = mainImage.value;
+          try {
+            final compressed = await ImageUtil.compressImage(mainImage.value!, quality: 80);
+            if (compressed != null) {
+              imageToUpload = compressed;
+            }
+          } catch (e) {
+            print('❌ Error compressing main image: $e');
+          }
+          final ref = _storage.ref()
+              .child('users')
+              .child(currentUser.uid)
+              .child('blogs')
+              .child(docId)
+              .child('main.jpg');
+          final uploadTask = ref.putFile(imageToUpload!);
+          final snapshot = await uploadTask;
+          imageURL = await snapshot.ref.getDownloadURL();
+        }
       
       final draftData = {
         'authorId': currentUser.uid,
@@ -229,7 +238,7 @@ class BlogPostController extends GetxController {
           'Success',
           'Draft saved successfully',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.8),
+          backgroundColor: Colors.green.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
           duration: const Duration(seconds: 1),
         );
@@ -243,7 +252,7 @@ class BlogPostController extends GetxController {
         'Error',
         'Failed to save draft: $e',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
       return false;
@@ -271,7 +280,7 @@ class BlogPostController extends GetxController {
         'Error',
         'Post title cannot be empty',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
       return;
@@ -282,7 +291,7 @@ class BlogPostController extends GetxController {
         'Error',
         'Please select a category for the post',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
       return;
@@ -299,7 +308,7 @@ class BlogPostController extends GetxController {
           'Authentication Error',
           'You need to be logged in to publish a post. Please log in again.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return;
@@ -316,7 +325,7 @@ class BlogPostController extends GetxController {
           'Error',
           'Unable to load user data. Please try logging in again.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
         );
         return;
@@ -352,7 +361,7 @@ class BlogPostController extends GetxController {
                 'Duplicate Post Detected',
                 'You already published a post with this title recently. Please wait a few minutes before publishing again.',
                 snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.orange.withOpacity(0.8),
+                backgroundColor: Colors.orange.withAlpha((0.8 * 255).toInt()),
                 colorText: Colors.white,
                 duration: const Duration(seconds: 4),
               );
@@ -363,15 +372,24 @@ class BlogPostController extends GetxController {
         
         String? imageURL = imageUrl.value;
         
-      // If we have a new image, upload it
+      // If we have a new image, compress and upload it
       if (mainImage.value != null) {
+        File? imageToUpload = mainImage.value;
+        try {
+          final compressed = await ImageUtil.compressImage(mainImage.value!, quality: 80);
+          if (compressed != null) {
+            imageToUpload = compressed;
+          }
+        } catch (e) {
+          print('❌ Error compressing main image: $e');
+        }
         final ref = _storage.ref()
             .child('users')
             .child(currentUser.uid)
             .child('blogs')
             .child(docId)
             .child('main.jpg');
-        final uploadTask = ref.putFile(mainImage.value!);
+        final uploadTask = ref.putFile(imageToUpload!);
         final snapshot = await uploadTask;
         imageURL = await snapshot.ref.getDownloadURL();
       }
@@ -420,7 +438,7 @@ class BlogPostController extends GetxController {
           'Success',
           'Post published successfully',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.8),
+          backgroundColor: Colors.green.withAlpha((0.8 * 255).toInt()),
           colorText: Colors.white,
           duration: const Duration(seconds: 2),
         );
@@ -449,7 +467,7 @@ class BlogPostController extends GetxController {
         'Error',
         'Failed to publish post: $e',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
     } finally {
@@ -471,7 +489,7 @@ class BlogPostController extends GetxController {
         'Authentication Error',
         'You need to be logged in to delete a draft. Please log in again.',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
       return;
@@ -526,9 +544,9 @@ class BlogPostController extends GetxController {
             .child(draftId.value)
             .listAll()
             .then((result) {
-              result.items.forEach((itemRef) {
+              for (var itemRef in result.items) {
                 itemRef.delete();
-              });
+              }
             });
       } catch (e) {
         print('Error deleting blog images: $e');
@@ -538,7 +556,7 @@ class BlogPostController extends GetxController {
         'Success',
         'Draft deleted successfully',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.8),
+        backgroundColor: Colors.green.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
       
@@ -550,7 +568,7 @@ class BlogPostController extends GetxController {
         'Error',
         'Failed to delete draft: $e',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withAlpha((0.8 * 255).toInt()),
         colorText: Colors.white,
       );
     } finally {

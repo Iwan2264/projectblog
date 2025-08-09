@@ -38,7 +38,7 @@ class AuthController extends GetxController {
     }
   }
   
-  _setInitialScreen(User? user) async {
+  Future<void> _setInitialScreen(User? user) async {
     if (user == null) {
       Get.offAllNamed('/auth');
     } else {
@@ -206,7 +206,7 @@ class AuthController extends GetxController {
         'Sign In Failed',
         errorMessage.value,
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.7),
+        backgroundColor: Colors.red.withAlpha((0.7 * 255).toInt()),
         colorText: Colors.white,
         duration: const Duration(seconds: 5),
       );
@@ -220,7 +220,7 @@ class AuthController extends GetxController {
         'Error',
         'An unexpected error occurred. Please try again later.',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.7),
+        backgroundColor: Colors.red.withAlpha((0.7 * 255).toInt()),
         colorText: Colors.white,
       );
     } finally {
@@ -303,7 +303,7 @@ class AuthController extends GetxController {
         'Account Created',
         'Please check your email to verify your account',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.5),
+        backgroundColor: Colors.green.withAlpha((0.5 * 255).toInt()),
         colorText: Colors.white,
       );
 
@@ -363,7 +363,7 @@ class AuthController extends GetxController {
         'Password Reset', 
         'Password reset email sent to $email',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.blue.withOpacity(0.5),
+        backgroundColor: Colors.blue.withAlpha((0.5 * 255).toInt()),
         colorText: Colors.white,
       );
     } on FirebaseAuthException catch (e) {
@@ -395,7 +395,7 @@ class AuthController extends GetxController {
           'Verification Email Sent', 
           'Please check your inbox',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.5),
+          backgroundColor: Colors.green.withAlpha((0.5 * 255).toInt()),
           colorText: Colors.white,
         );
       }
@@ -405,7 +405,7 @@ class AuthController extends GetxController {
         'Error', 
         'Failed to send verification email',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.5),
+        backgroundColor: Colors.red.withAlpha((0.5 * 255).toInt()),
         colorText: Colors.white,
       );
     }

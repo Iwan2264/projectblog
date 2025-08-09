@@ -250,7 +250,7 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
                 vertical: 4,
               ),
               decoration: BoxDecoration(
-                color: theme.primaryColor.withOpacity(0.1),
+                color: theme.primaryColor.withAlpha(25),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -358,7 +358,7 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
             fontSize: 12,
             color: theme.primaryColor,
           ),
-          backgroundColor: theme.primaryColor.withOpacity(0.1),
+          backgroundColor: theme.primaryColor.withAlpha(25),
         )).toList(),
       ),
     );
@@ -468,7 +468,7 @@ class _BlogDetailPageState extends State<BlogDetailPage> {
         'Success',
         'Blog post deleted successfully',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withOpacity(0.8),
+        backgroundColor: Colors.green.withAlpha(200),
         colorText: Colors.white,
       );
     }

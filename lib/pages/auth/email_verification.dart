@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 
 class EmailVerificationPage extends StatefulWidget {
-  const EmailVerificationPage({Key? key}) : super(key: key);
+  const EmailVerificationPage({super.key});
 
   @override
   State<EmailVerificationPage> createState() => _EmailVerificationPageState();
@@ -66,8 +66,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.3),
-                  Colors.black.withOpacity(0.6),
+                  Colors.black.withAlpha((0.3 * 255).toInt()),
+                  Colors.black.withAlpha((0.6 * 255).toInt()),
                 ],
               ),
             ),
@@ -87,7 +87,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           size: 24,
                         ),
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.1),
+                          backgroundColor: Colors.white.withAlpha((0.1 * 255).toInt()),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -103,11 +103,11 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withAlpha((0.95 * 255).toInt()),
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withAlpha((0.1 * 255).toInt()),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -121,7 +121,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF5D4DA8).withOpacity(0.1),
+                            color: const Color(0xFF5D4DA8).withAlpha(25),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -257,7 +257,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withAlpha((0.1 * 255).toInt()),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -269,7 +269,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white.withOpacity(0.8),
+                              Colors.white.withAlpha((0.8 * 255).toInt()),
                             ),
                           ),
                         ),
@@ -277,7 +277,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
                         Text(
                           'Checking verification status...',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withAlpha((0.8 * 255).toInt()),
                             fontSize: 14,
                           ),
                         ),

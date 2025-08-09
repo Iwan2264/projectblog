@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BlogPostModel {
@@ -39,10 +41,10 @@ class BlogPostModel {
                 );
               }
             }
-            throw parseError; // If none of our custom formats matched
+            rethrow; // If none of our custom formats matched
           } catch (e) {
             print('Error parsing date with custom formats: $e for value: $value');
-            throw e;
+            rethrow;
           }
         }
       }

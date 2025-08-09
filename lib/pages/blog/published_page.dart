@@ -180,7 +180,7 @@ class _AllPublishedBlogsPageState extends State<AllPublishedBlogsPage> {
                     right: 8,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withAlpha(150),
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(

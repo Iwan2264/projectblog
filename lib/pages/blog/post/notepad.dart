@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
-import 'package:file_picker/file_picker.dart'; // For PlatformFile
+import 'package:file_picker/file_picker.dart';
 import 'package:projectblog/utils/image_util.dart';
 
 class HtmlEditorWidget extends StatelessWidget {

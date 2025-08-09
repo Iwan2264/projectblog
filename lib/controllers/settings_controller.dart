@@ -355,7 +355,7 @@ class SettingsController extends GetxController {
                   'Error', 
                   'Failed to logout. Please try again.',
                   snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: Colors.red.withOpacity(0.1),
+                    backgroundColor: Colors.red.withAlpha(25),
                   colorText: Colors.red,
                 );
               }

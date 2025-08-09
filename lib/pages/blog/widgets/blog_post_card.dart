@@ -102,7 +102,7 @@ class BlogPostCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: theme.primaryColor.withOpacity(0.1),
+                          color: theme.primaryColor.withAlpha(25),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(

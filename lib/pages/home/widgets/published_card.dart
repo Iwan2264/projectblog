@@ -248,7 +248,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
+                      color: Colors.green.withAlpha(50),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(

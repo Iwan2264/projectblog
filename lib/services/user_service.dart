@@ -140,7 +140,7 @@ class UserService {
       QuerySnapshot query = await _firestore
           .collection('usernames')
           .where(FieldPath.documentId, isGreaterThanOrEqualTo: searchTerm.toLowerCase())
-          .where(FieldPath.documentId, isLessThanOrEqualTo: searchTerm.toLowerCase() + '\uf8ff')
+          .where(FieldPath.documentId, isLessThanOrEqualTo: '${searchTerm.toLowerCase()}\uf8ff')
           .limit(limit)
           .get();
       
@@ -284,13 +284,13 @@ class UserService {
       
       // Recursively delete subdirectories
       for (Reference prefix in result.prefixes) {
-        await _deleteFolder('${prefix.fullPath}');
+        await _deleteFolder(prefix.fullPath);
       }
       
       AppLogger.info('Deleted storage folder: $path');
     } catch (e) {
       AppLogger.error('Error deleting storage folder', e);
-      throw e;
+      rethrow;
     }
   }
 }
