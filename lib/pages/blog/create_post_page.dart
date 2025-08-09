@@ -212,6 +212,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
             ),
             TextButton(
               onPressed: () {
+                // Check if the draft is already saved
+                if (_controller.isDraftSaved.value) {
+                  Navigator.of(dialogContext).pop(true);
+                  return;
+                }
+                
                 // Capture the navigator context before doing the async operation
                 final localNavigator = Navigator.of(dialogContext);
                 

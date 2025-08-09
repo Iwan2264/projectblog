@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 
 // Import Firebase options - use default options for now
@@ -24,6 +25,20 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    
+    // Configure Firestore settings to handle large documents
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+    
+    // Clear Firestore cache to resolve any corruption issues
+    try {
+      await FirebaseFirestore.instance.clearPersistence();
+      print('✅ Firestore cache cleared successfully');
+    } catch (e) {
+      print('⚠️ Could not clear Firestore cache (normal if app was running): $e');
+    }
     
     // Initialize controllers
     Get.put(ThemeController());

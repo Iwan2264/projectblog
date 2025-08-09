@@ -28,6 +28,7 @@ class BlogPostController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxBool isSavingDraft = false.obs;
   final RxBool isPublishing = false.obs;
+  final RxBool isDraftSaved = false.obs;
   
   @override
   void onClose() {
@@ -137,6 +138,20 @@ class BlogPostController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
+      );
+      return false;
+    }
+    
+    // Check content size to prevent SQLite issues (Firestore has 1MB limit per document)
+    const int maxContentSize = 500 * 1024; // 500KB limit for content
+    if (htmlContent.value.length > maxContentSize) {
+      Get.snackbar(
+        'Content Too Large',
+        'Blog content is too large (${(htmlContent.value.length / 1024).toStringAsFixed(1)}KB). Please reduce content size to under 500KB.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
       return false;
     }
@@ -350,6 +365,9 @@ class BlogPostController extends GetxController {
           duration: const Duration(seconds: 1),
         );
         
+        // Mark draft as saved
+        isDraftSaved.value = true;
+        
         return true;
       });
       
@@ -400,6 +418,20 @@ class BlogPostController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
+      );
+      return;
+    }
+    
+    // Check content size to prevent SQLite issues
+    const int maxContentSize = 500 * 1024; // 500KB limit for content
+    if (htmlContent.value.length > maxContentSize) {
+      Get.snackbar(
+        'Content Too Large',
+        'Blog content is too large (${(htmlContent.value.length / 1024).toStringAsFixed(1)}KB). Please reduce content size to under 500KB.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
       );
       return;
     }

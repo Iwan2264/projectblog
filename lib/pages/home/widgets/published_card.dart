@@ -21,7 +21,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
 
   List<BlogPostModel> _publishedBlogs = [];
   bool _isLoading = true;
-  int _displayCount = 6;
+  int _displayCount = 10;
 
   @override
   void initState() {
@@ -114,9 +114,9 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
         itemCount: _displayCount,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2, // 2 items per row
-          crossAxisSpacing: 2, // Further reduced spacing between columns
-          mainAxisSpacing: 2, // Further reduced spacing between rows
-          childAspectRatio: 0.8, // Adjusted to ensure enough space for text
+          crossAxisSpacing: 1, // Further reduced spacing between columns
+            mainAxisSpacing: 1, // Further reduced spacing between rows
+            childAspectRatio: 1.0, // Increased by 0.1 from 0.9 to 1.0
         ),
         itemBuilder: (context, index) {
           final blog = _publishedBlogs[index];
@@ -139,7 +139,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
     );
   }
 
-  // Adjusted the layout to increase space for the text section below the cover image
+  // Removed the _getContentPreview function and refined the blog card code
   Widget _buildBlogCard(BlogPostModel blog) {
     return GestureDetector(
       onTap: () => _viewBlog(blog),
@@ -183,7 +183,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
 
             // Text fields below the cover image
             Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.all(4.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -196,37 +196,42 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 2),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align left and right elements
+                    crossAxisAlignment: CrossAxisAlignment.center, // Center-align vertically
                     children: [
-                      Icon(
-                        Icons.favorite,
-                        size: 12,
-                        color: Colors.red[400],
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.favorite,
+                            size: 12,
+                            color: Colors.red[400],
+                          ),
+                          const SizedBox(width: 1),
+                          Text(
+                            '${blog.likesCount}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(width: 1),
+                          Icon(
+                            Icons.visibility,
+                            size: 12,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 1),
+                          Text(
+                            '${blog.viewsCount}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${blog.likesCount}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Icon(
-                        Icons.visibility,
-                        size: 12,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${blog.viewsCount}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 10,
-                        ),
-                      ),
-                      const Spacer(),
                       Text(
                         _formatDate(blog.publishedAt ?? blog.createdAt),
                         style: const TextStyle(
@@ -250,7 +255,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
                       blog.category,
                       style: const TextStyle(
                         color: Colors.green,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

@@ -45,12 +45,8 @@ class UserModel {
       name: map['name'],
       photoURL: map['photoURL'],
       bio: map['bio'],
-      createdAt: map['createdAt'] is Timestamp 
-          ? (map['createdAt'] as Timestamp).toDate() 
-          : DateTime.parse(map['createdAt'].toString()),
-      lastLoginAt: map['lastLoginAt'] is Timestamp 
-          ? (map['lastLoginAt'] as Timestamp).toDate()
-          : DateTime.parse(map['lastLoginAt'].toString()),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      lastLoginAt: _parseDateTime(map['lastLoginAt']) ?? DateTime.now(),
       followersCount: map['followersCount'] ?? 0,
       followingCount: map['followingCount'] ?? 0,
       postsCount: map['postsCount'] ?? 0,
@@ -60,6 +56,24 @@ class UserModel {
       totalLikesReceived: map['totalLikesReceived'] ?? 0,
       totalBlogViews: map['totalBlogViews'] ?? 0,
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    
+    try {
+      if (value is Timestamp) {
+        return value.toDate();
+      } else if (value is String && value.isNotEmpty) {
+        return DateTime.parse(value);
+      } else if (value is int) {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      }
+    } catch (e) {
+      print('⚠️ WARNING: Failed to parse date: $value - Error: $e');
+    }
+    
+    return null;
   }
 
   Map<String, dynamic> toMap() {
