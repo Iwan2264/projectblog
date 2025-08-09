@@ -183,90 +183,57 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 
   Future<bool?> _showExitConfirmationDialog(BuildContext context) {
-    // Check if there's unsaved content to show dialog
     final hasContent = _controller.titleController.text.isNotEmpty || 
                       _controller.htmlContent.value.isNotEmpty;
-    
+
     if (!hasContent) {
-      // If no content, just exit without saving
       return Future.value(true);
     }
-    
-    // Store navigator reference to avoid deactivated widget issues
-    final navigator = Navigator.of(context);
-    
+
     return showDialog<bool>(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
+      barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Save Draft?'),
-          content: const Text('Do you want to save the draft before exiting?'),
+          title: const Text(
+            'You may have unsaved changes.',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'Do you want to exit?',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
           actions: [
             TextButton(
               onPressed: () {
-                // Exit without saving - use the dialog's context
                 Navigator.of(dialogContext).pop(true);
               },
-              child: const Text('Exit Without Saving'),
+              style: TextButton.styleFrom(
+                textStyle: const TextStyle(fontSize: 24),
+              ),
+              child: const Text('Yes!'),
             ),
             TextButton(
               onPressed: () {
-                // Check if the draft is already saved
-                if (_controller.isDraftSaved.value) {
-                  Navigator.of(dialogContext).pop(true);
-                  return;
-                }
-                
-                // Capture the navigator context before doing the async operation
-                final localNavigator = Navigator.of(dialogContext);
-                
-                // Show progress indicator
-                showDialog(
-                  context: dialogContext,
-                  barrierDismissible: false,
-                  builder: (loadingContext) => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-                
-                // Save and exit
-                _controller.saveDraft().then((_) {
-                  // First pop the loading dialog
-                  if (navigator.mounted) {
-                    try {
-                      localNavigator.pop();
-                      // Then pop the confirmation dialog with result
-                      localNavigator.pop(true);
-                    } catch (e) {
-                      print('Navigation error (non-critical): $e');
-                    }
-                  }
-                }).catchError((e) {
-                  // On error, pop loading dialog and show error
-                  if (navigator.mounted) {
-                    try {
-                      localNavigator.pop();
-                      localNavigator.pop(false);
-                    } catch (e) {
-                      print('Navigation error (non-critical): $e');
-                    }
-                  }
-                });
-              },
-              child: const Text('Save & Exit'),
-            ),
-            TextButton(
-              onPressed: () {
-                // Cancel and return to editing - use the dialog's context
                 Navigator.of(dialogContext).pop(false);
               },
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).primaryColor,
+                textStyle: const TextStyle(fontSize: 24),
               ),
-              child: const Text('Cancel'),
+              child: const Text('No!'),
             ),
           ],
+          elevation: 3,
         );
       },
     );
