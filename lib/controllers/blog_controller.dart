@@ -153,18 +153,19 @@ class BlogController extends GetxController {
   // Cached user drafts
   final RxList<BlogPostModel> userDrafts = <BlogPostModel>[].obs;
   
+  // Helper method to sort blogs by date
+  List<BlogPostModel> _sortBlogsByDate(List<BlogPostModel> blogs, {bool usePublishedDate = false}) {
+    blogs.sort((a, b) =>
+        (usePublishedDate ? b.publishedAt ?? b.updatedAt : b.updatedAt).compareTo(
+            usePublishedDate ? a.publishedAt ?? a.updatedAt : a.updatedAt));
+    return blogs;
+  }
+
   // Preload and cache user drafts
   Future<void> _preloadUserDrafts(String userId) async {
     try {
-      print('📝 DEBUG: Preloading drafts for user $userId');
       final drafts = await _blogService.getUserDrafts(userId);
-      
-      // Sort drafts by date (newest first)
-      drafts.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      
-      // Store in cache
-      userDrafts.value = drafts;
-      print('📝 DEBUG: Cached ${drafts.length} drafts');
+      userDrafts.value = _sortBlogsByDate(drafts);
     } catch (e) {
       AppLogger.error('Error preloading user drafts', e);
     }
@@ -197,14 +198,8 @@ class BlogController extends GetxController {
   /// Refresh drafts cache
   Future<void> refreshDrafts(String userId) async {
     try {
-      print('📝 DEBUG: Refreshing drafts for user $userId');
       final drafts = await _blogService.getUserDrafts(userId);
-      
-      // Sort drafts by date (newest first)
-      drafts.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      
-      // Update cache
-      userDrafts.value = drafts;
+      userDrafts.value = _sortBlogsByDate(drafts);
     } catch (e) {
       AppLogger.error('Error refreshing drafts', e);
     }
@@ -216,15 +211,8 @@ class BlogController extends GetxController {
   // Preload and cache user published posts
   Future<void> _preloadUserPublishedPosts(String userId) async {
     try {
-      print('📝 DEBUG: Preloading published posts for user $userId');
       final posts = await _blogService.getUserPublishedPosts(userId);
-      
-      // Sort posts by date (newest first)
-      posts.sort((a, b) => (b.publishedAt ?? b.updatedAt).compareTo(a.publishedAt ?? a.updatedAt));
-      
-      // Store in cache
-      userPublishedPosts.value = posts;
-      print('📝 DEBUG: Cached ${posts.length} published posts');
+      userPublishedPosts.value = _sortBlogsByDate(posts, usePublishedDate: true);
     } catch (e) {
       AppLogger.error('Error preloading user published posts', e);
     }
@@ -257,14 +245,8 @@ class BlogController extends GetxController {
   /// Refresh published posts cache
   Future<void> refreshPublishedPosts(String userId) async {
     try {
-      print('📝 DEBUG: Refreshing published posts for user $userId');
       final posts = await _blogService.getUserPublishedPosts(userId);
-      
-      // Sort posts by date (newest first)
-      posts.sort((a, b) => (b.publishedAt ?? b.updatedAt).compareTo(a.publishedAt ?? a.updatedAt));
-      
-      // Update cache
-      userPublishedPosts.value = posts;
+      userPublishedPosts.value = _sortBlogsByDate(posts, usePublishedDate: true);
     } catch (e) {
       AppLogger.error('Error refreshing published posts', e);
     }

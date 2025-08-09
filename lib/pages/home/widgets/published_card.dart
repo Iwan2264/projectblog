@@ -113,10 +113,10 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: _displayCount,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, // 2 items per row
-          crossAxisSpacing: 1, // Further reduced spacing between columns
-            mainAxisSpacing: 1, // Further reduced spacing between rows
-            childAspectRatio: 1.0, // Increased by 0.1 from 0.9 to 1.0
+          crossAxisCount: 2,
+          crossAxisSpacing: 1,
+            mainAxisSpacing: 1,
+            childAspectRatio: 1.0,
         ),
         itemBuilder: (context, index) {
           final blog = _publishedBlogs[index];
@@ -128,7 +128,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
 
   Widget _buildLoadMoreButton() {
     return Padding(
-      padding: const EdgeInsets.only(top: 24.0),
+      padding: const EdgeInsets.only(top: 16.0),
       child: OutlinedButton(
         onPressed: _loadMore,
         style: OutlinedButton.styleFrom(
@@ -144,10 +144,10 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
     return GestureDetector(
       onTap: () => _viewBlog(blog),
       child: Card(
-        elevation: 4,
-        margin: const EdgeInsets.all(8), // Added margin for better spacing
+        elevation: 3,
+        margin: const EdgeInsets.all(3), // Added margin for better spacing
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +157,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
               aspectRatio: 16 / 9, // Landscape aspect ratio
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+                  top: Radius.circular(6),
                 ),
                 child: blog.imageURL != null && blog.imageURL!.isNotEmpty
                     ? CachedNetworkImage(
@@ -208,7 +208,7 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
                             size: 12,
                             color: Colors.red[400],
                           ),
-                          const SizedBox(width: 1),
+                          const SizedBox(width: 2),
                           Text(
                             '${blog.likesCount}',
                             style: const TextStyle(
@@ -216,13 +216,13 @@ class _PublishedBlogsGridState extends State<PublishedBlogsGrid> {
                               fontSize: 10,
                             ),
                           ),
-                          const SizedBox(width: 1),
+                          const SizedBox(width: 10),
                           Icon(
                             Icons.visibility,
                             size: 12,
                             color: Colors.grey,
                           ),
-                          const SizedBox(width: 1),
+                          const SizedBox(width: 2),
                           Text(
                             '${blog.viewsCount}',
                             style: const TextStyle(

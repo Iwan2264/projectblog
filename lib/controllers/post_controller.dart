@@ -9,6 +9,8 @@ import 'package:uuid/uuid.dart';
 import 'package:projectblog/controllers/auth_controller.dart';
 import 'package:projectblog/controllers/blog_controller.dart';
 import 'package:projectblog/models/blog_post_model.dart';
+import 'package:projectblog/utils/image_util.dart';
+import 'package:projectblog/utils/logger_util.dart';
 
 class BlogPostController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -87,7 +89,7 @@ class BlogPostController extends GetxController {
         try {
           // Add style info in a hidden div at the beginning
           if (!htmlContent.value.contains('class="editor-styles"')) {
-            const String styleDiv = '<div style="display:none" class="editor-styles">img {max-width: 100%; height: auto; display: block; margin: 0 auto;}</div>';
+            const String styleDiv = '<div style="display:none" class="editor-styles">img {max-width: 90%; height: auto; display: block; margin: 0 auto;}</div>';
             htmlContent.value = styleDiv + htmlContent.value;
           }
           
@@ -198,18 +200,24 @@ class BlogPostController extends GetxController {
         
         String? imageURL = imageUrl.value;
         
-      // If we have a new image, optimize and upload it
+      // If we have a new image, optimize, crop to 16:9, and upload it
       if (mainImage.value != null) {
         try {
           // Create a loading indicator
           Get.snackbar(
-            'Uploading Image',
-            'Please wait while we upload your image...',
+            'Processing Image',
+            'Please wait while we process your image...',
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.blue.withOpacity(0.8),
             colorText: Colors.white,
             duration: const Duration(seconds: 2),
           );
+          
+          // Auto crop cover image to 16:9 aspect ratio
+          File? croppedCoverImage = await ImageUtil.cropCoverImage(mainImage.value!);
+          if (croppedCoverImage == null) {
+            throw Exception('Failed to crop cover image');
+          }
           
           // Use structured path for blog images
           final ref = _storage.ref()
@@ -226,8 +234,8 @@ class BlogPostController extends GetxController {
             cacheControl: 'public, max-age=86400',
           );
             
-          // Upload with metadata and higher quality setting
-          final uploadTask = ref.putFile(mainImage.value!, metadata);
+          // Upload the cropped image with metadata
+          final uploadTask = ref.putFile(croppedCoverImage, metadata);
           
           // Listen for progress
           uploadTask.snapshotEvents.listen((event) {
@@ -238,9 +246,9 @@ class BlogPostController extends GetxController {
           final snapshot = await uploadTask;
           imageURL = await snapshot.ref.getDownloadURL();
           
-          print('📤 DEBUG: Image uploaded successfully');
+          print('📤 DEBUG: Cover image processed and uploaded successfully');
         } catch (e) {
-          print('❌ DEBUG: Error uploading image: $e');
+          print('❌ DEBUG: Error processing and uploading cover image: $e');
           // Continue anyway with the previous image URL
         }
       }

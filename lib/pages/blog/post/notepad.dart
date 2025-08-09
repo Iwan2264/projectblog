@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:file_picker/file_picker.dart'; // For PlatformFile
+import 'package:projectblog/utils/image_util.dart';
 
 class HtmlEditorWidget extends StatelessWidget {
   final HtmlEditorController controller;
@@ -100,12 +102,31 @@ class HtmlEditorWidget extends StatelessWidget {
                             redo: true,
                           ),
                         ],
-                        // Fix image upload settings
+                        // Handle image upload with compression
                         mediaUploadInterceptor: (PlatformFile file, InsertFileType type) async {
                           print('🖼️ DEBUG: File picked: ${file.name} (${file.size} bytes)');
                           if (type == InsertFileType.image) {
-                            // Return true to allow the default behavior 
-                            // (using data URLs for images)
+                            try {
+                              // Only compress if it's an image and has a path (local file)
+                              if (file.path != null) {
+                                final originalFile = File(file.path!);
+                                
+                                // Import the image utility
+                                final compressedImage = await ImageUtil.compressImage(
+                                  originalFile,
+                                  quality: 75, // Lower quality for inline images to save space
+                                );
+                                
+                                // If compression was successful, return false and handle manually
+                                if (compressedImage != null) {
+                                  print('🖼️ DEBUG: Image compressed for editor');
+                                  return true; // Still use default behavior but with compressed image
+                                }
+                              }
+                            } catch (e) {
+                              print('❌ DEBUG: Error compressing editor image: $e');
+                            }
+                            // Fall back to default behavior
                             return true;
                           }
                           return false;
